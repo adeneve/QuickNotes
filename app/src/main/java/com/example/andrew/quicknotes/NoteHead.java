@@ -14,12 +14,14 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewDebug;
 import android.view.ViewGroup;
+import android.view.ViewGroup.LayoutParams;
 import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 
 /**
@@ -48,8 +50,11 @@ public class NoteHead extends Service {
         LayoutInflater inflater = (LayoutInflater) getSystemService((LAYOUT_INFLATER_SERVICE));
         layout =  (FrameLayout) inflater.inflate(R.layout.notes_overlay, null);
 
+
         chatHead = new ImageView(this);
-        chatHead.setImageResource(R.drawable.ic_launcher_background);
+        chatHead.setImageResource(R.drawable.notes_icon);
+
+
 
         final WindowManager.LayoutParams params = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.WRAP_CONTENT,
@@ -71,46 +76,71 @@ public class NoteHead extends Service {
                 PixelFormat.TRANSLUCENT);
 
         chatHead.setOnTouchListener(new View.OnTouchListener() {
+
+
             private float mdx = 0, mdy = 0;
+            int oldx = 0, oldy = 0;
             @Override
             public boolean onTouch(View view, MotionEvent motionEvent) {
+
                 int action = motionEvent.getAction();
                 if(action == MotionEvent.ACTION_DOWN){
                     mdx = params.x - motionEvent.getRawX();
                     mdy = params.y - motionEvent.getRawY();
+                    oldx = params.x; oldy = params.y;
+
+                    chatHead.setImageResource(R.drawable.notes_icon_pressed);
 
                 } else
                 if(action == MotionEvent.ACTION_MOVE) {
-                    Log.i("x position", Integer.toString(params.x));
-                    Log.i("y position", Integer.toString(params.y));
                     params.x = (int) (motionEvent.getRawX() + mdx);
                     params.y = (int) (motionEvent.getRawY() + mdy);
+
 
                     windowManager.updateViewLayout(chatHead, params);
                 } else
                 if(action == MotionEvent.ACTION_UP){
                     //animate to left if notes are more towards the left
-
+                    chatHead.setImageResource(R.drawable.notes_icon);
 
                     if(params.y > 450){
                         sendMessage();
                         myHeads.stopSelf();
-                        //windowManager.removeView(chatHead);
-                    }else{
-                        if( !overlay) {
-                            windowManager.addView(layout, OverlayParams);
 
-                            overlay = true;
-                        }else{
-                            windowManager.removeView(layout);
-                            overlay = false;
+                    }else{
+                        if(oldx== params.x && oldy == params.y) {
+                            if (!overlay) {
+                                windowManager.addView(layout, OverlayParams);
+
+                                overlay = true;
+                            } else {
+                                windowManager.removeView(layout);
+                                overlay = false;
+                            }
                         }
                     }
                 }
                 return true;
             }
 
-        });
+        }
+        );
+
+        /*View.OnClickListener onClickListener = new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if( !overlay) {
+                    windowManager.addView(layout, OverlayParams);
+
+                    overlay = true;
+                }else{
+                    windowManager.removeView(layout);
+                    overlay = false;
+                }
+            }
+        };
+        chatHead.setOnClickListener(onClickListener);*/
+
         final EditText et = layout.findViewById(R.id.noteText);
         layout.setOnTouchListener(new View.OnTouchListener() {
                                       float mdx=0, mdy=0;

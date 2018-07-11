@@ -12,7 +12,7 @@ import android.widget.EditText;
  * Created by andrew on 2/27/2018.
  */
 
-public class Overlay extends AppCompatActivity {
+/*public class Overlay extends AppCompatActivity {
 
     public void onCreate(Bundle savedInstanceState){
         super.onCreate(savedInstanceState);
@@ -36,4 +36,4 @@ public class Overlay extends AppCompatActivity {
     public void onResume(){
         super.onResume();
     }
-}
+}*/
