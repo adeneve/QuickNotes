@@ -1,6 +1,7 @@
 package com.example.andrew.quicknotes;
 import android.annotation.SuppressLint;
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.PixelFormat;
 import android.os.IBinder;
@@ -14,7 +15,9 @@ import android.view.View;
 import android.view.ViewDebug;
 import android.view.ViewGroup;
 import android.view.WindowManager;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.RelativeLayout;
@@ -108,12 +111,16 @@ public class NoteHead extends Service {
             }
 
         });
+        final EditText et = layout.findViewById(R.id.noteText);
         layout.setOnTouchListener(new View.OnTouchListener() {
                                       float mdx=0, mdy=0;
                                       @Override
                                       public boolean onTouch(View view, MotionEvent motionEvent) {
 
                                           int action = motionEvent.getAction();
+                                          et.clearFocus();
+                                          InputMethodManager imm = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
+                                          imm.hideSoftInputFromWindow(et.getWindowToken(), 0);
                                           if(action == MotionEvent.ACTION_DOWN){
                                               mdx = OverlayParams.x - motionEvent.getRawX();
                                               mdy = OverlayParams.y - motionEvent.getRawY();
