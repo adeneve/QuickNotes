@@ -24,6 +24,8 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 
+import java.io.FileInputStream;
+
 /**
  * Created by andrew on 2/22/2018.
  */
@@ -53,6 +55,19 @@ public class NoteHead extends Service {
 
         chatHead = new ImageView(this);
         chatHead.setImageResource(R.drawable.notes_icon);
+
+        FileInputStream is;
+        String firstNote = "note_0";
+
+        try{
+            int val;
+            is = openFileInput(firstNote);
+            while((val = is.read()) != -1){
+                Log.i("new note val", Character.toString((char)val));
+            }
+        }catch (Exception e){
+            e.printStackTrace();
+        }
 
 
 
@@ -169,6 +184,7 @@ public class NoteHead extends Service {
                                       }
                                       return true;
                                   }});
+
         final Button button4 = layout.findViewById(R.id.button4);
         button4.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -188,7 +204,10 @@ public class NoteHead extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        if (chatHead != null) windowManager.removeView(chatHead);
+        if(overlay) {
+            windowManager.removeView(layout);
+        }
+         windowManager.removeView(chatHead);
 
     }
 
