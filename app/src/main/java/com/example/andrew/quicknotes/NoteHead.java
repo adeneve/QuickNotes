@@ -1,22 +1,27 @@
 package com.example.andrew.quicknotes;
 import android.annotation.SuppressLint;
 import android.app.Service;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.res.Resources;
 import android.graphics.PixelFormat;
+import android.graphics.Rect;
 import android.os.IBinder;
 import android.support.constraint.ConstraintLayout;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Gravity;
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewDebug;
 import android.view.ViewGroup;
 import android.view.ViewGroup.LayoutParams;
+import android.view.ViewTreeObserver;
 import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
@@ -31,6 +36,12 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.PrintWriter;
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.util.Log;
+
 /**
  * Created by andrew on 2/22/2018.
  */
@@ -43,6 +54,9 @@ public class NoteHead extends Service {
     final Service myHeads = this;
     EditText et ;
     String  originalNote;
+    HomeWatcher mHomeWatcher;
+
+
 
 
     @Override public IBinder onBind(Intent intent) {
@@ -57,6 +71,10 @@ public class NoteHead extends Service {
         windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
         LayoutInflater inflater = (LayoutInflater) getSystemService((LAYOUT_INFLATER_SERVICE));
         layout =  (FrameLayout) inflater.inflate(R.layout.notes_overlay, null);
+        layout.setFocusableInTouchMode(true);
+
+
+
 
 
         chatHead = new ImageView(this);
@@ -80,7 +98,9 @@ public class NoteHead extends Service {
         //EditText et = layout.findViewById(R.id.noteText);
         Log.i("note", originalNote);
         et = layout.findViewById(R.id.noteText);
-        et.setText( originalNote, TextView.BufferType.NORMAL);
+        et.setText( originalNote, TextView.BufferType.EDITABLE);
+
+
 
 
 
@@ -206,12 +226,39 @@ public class NoteHead extends Service {
 
                                       }
                                       if(action == MotionEvent.ACTION_OUTSIDE){
-                                              if(overlay){
-                                                  imm.hideSoftInputFromWindow(et2.getWindowToken(), 0);
-                                              }
+                                              imm.hideSoftInputFromWindow(et2.getWindowToken(), 0);
+
+
                                       }
                                       return true;
                                   }});
+
+        layout.setOnKeyListener(new View.OnKeyListener() {
+            @Override
+            public boolean onKey(View view, int i, KeyEvent keyEvent) {
+                Log.i("key pressed", Integer.toString(i));
+                if(i == KeyEvent.KEYCODE_BACK || i == KeyEvent.KEYCODE_HOME){
+                    Log.i("back", "BACK");
+                    windowManager.removeView(layout);
+                    overlay = !overlay;
+                }
+
+                return true;
+            }
+        });
+
+        et.setOnKeyListener(new View.OnKeyListener() {
+            @Override
+            public boolean onKey(View view, int i, KeyEvent keyEvent) {
+                if(i == KeyEvent.KEYCODE_BACK) {
+                    et.clearFocus();
+                    return true;
+                }
+                else return false;
+            }
+        });
+
+
 
         final Button button4 = layout.findViewById(R.id.button4);
         button4.setOnClickListener(new View.OnClickListener() {
@@ -225,13 +272,34 @@ public class NoteHead extends Service {
 
                 windowManager.addView(chatHead, params);
 
-    }
+                mHomeWatcher = new HomeWatcher(this);
+        mHomeWatcher.setOnHomePressedListener(new OnHomePressedListener() {
+            @Override
+            public void onHomePressed() {
+                if(overlay){
+                    windowManager.removeView(layout);
+                    overlay = !overlay;
+                }
+            }
+            @Override
+            public void onHomeLongPressed() {
+                if(overlay){
+                    windowManager.removeView(layout);
+                    overlay = !overlay;
+                }
+            }
+        });
+        mHomeWatcher.startWatch();
 
+
+
+    }
 
 
 
     @Override
     public void onDestroy() {
+        mHomeWatcher.stopWatch();
         String lastEdit = String.valueOf(et.getText());
         if(lastEdit.compareTo(originalNote) != 0){
             Log.i("writing", "writing new d");
@@ -252,6 +320,8 @@ public class NoteHead extends Service {
 
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
+
+
 
     public static int getScreenWidth() {
         return Resources.getSystem().getDisplayMetrics().widthPixels;
@@ -275,3 +345,6 @@ public class NoteHead extends Service {
         }
     }
 }
+
+
+

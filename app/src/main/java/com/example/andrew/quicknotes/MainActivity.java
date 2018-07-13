@@ -8,6 +8,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.net.Uri;
 import android.os.Build;
+import android.os.SystemClock;
 import android.provider.Settings;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
@@ -122,6 +123,11 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onResume() {
         super.onResume();
+        if(headsOn) {
+            stopService(new Intent(thisView, NoteHead.class));
+            headsOn = !headsOn;
+            // Use broadcast here instead to signal finished I/O write
+        }
         String newdata = getFileContents("note_0");
         notesContent[0].setText(newdata, TextView.BufferType.NORMAL);
     }
