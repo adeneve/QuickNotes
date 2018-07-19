@@ -55,6 +55,7 @@ public class NoteHead extends Service {
     EditText et ;
     String  originalNote;
     HomeWatcher mHomeWatcher;
+    int currentNote = 0;
 
 
 
@@ -178,6 +179,8 @@ public class NoteHead extends Service {
 
                     if(params.y > 450){
                         sendMessage();
+                        writeFile("note_0", String.valueOf(et.getText()));
+                        sendUpdateMessage(currentNote);
                         myHeads.stopSelf();
 
                     }else{
@@ -227,6 +230,8 @@ public class NoteHead extends Service {
                                       }
                                       if(action == MotionEvent.ACTION_OUTSIDE){
                                               imm.hideSoftInputFromWindow(et2.getWindowToken(), 0);
+                                              windowManager.removeView(layout);
+                                              overlay = !overlay;
 
 
                                       }
@@ -317,6 +322,13 @@ public class NoteHead extends Service {
     private void sendMessage() {
         // The string "my-integer" will be used to filer the intent
         Intent intent = new Intent("toggleHeads");
+
+        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+    }
+
+    private void sendUpdateMessage(int noteNum){
+        Intent intent = new Intent("updateNotes");
+        intent.putExtra("cardNum", noteNum);
 
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }

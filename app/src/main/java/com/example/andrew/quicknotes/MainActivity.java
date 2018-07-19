@@ -36,6 +36,7 @@ public class MainActivity extends AppCompatActivity {
     int numberOfNotes = 0;
     Context c = this;
     EditText[] notesContent = new EditText[5];
+    CardView[] noteCards = new CardView[5];
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -60,22 +61,30 @@ public class MainActivity extends AppCompatActivity {
         LocalBroadcastManager.getInstance(this)
                 .registerReceiver(notesToggleReceiver,
                         new IntentFilter("toggleHeads"));
+        LocalBroadcastManager.getInstance(this)
+                .registerReceiver(notesUpdateReceiver,
+                        new IntentFilter("updateNotes"));
 
         LinearLayout linlayout =  findViewById(R.id.notelist);
 
         notesDirectory = getApplicationContext().getFilesDir();
         File[] notes = notesDirectory.listFiles();
         int fcount = 0;
+        boolean firstFound = false;
         for(File f: notes){
             fcount++;
             String name = f.getName();
             if(name.substring(0,1).compareTo("n")!=0) continue;
+            if(name.substring(5,6).compareTo("0") == 0) firstFound = true;
+            int cardNum = Integer.parseInt(name.substring(5,6));
             CardView cv = new CardView(this);
             LinearLayout.LayoutParams lps = new LinearLayout.LayoutParams(700, 700);
             EditText et = new EditText(this);
             et.setLayoutParams(new ViewGroup.LayoutParams( ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
             String noteContents = getFileContents( f.getName());
-            notesContent[numberOfNotes] = et;
+            Log.i("noteName", f.getName());
+            notesContent[cardNum] = et;
+            noteCards[cardNum] = cv;
             numberOfNotes++;
             Log.i("noteContents", noteContents);
             et.setText( noteContents, TextView.BufferType.NORMAL);
@@ -83,9 +92,11 @@ public class MainActivity extends AppCompatActivity {
             linlayout.addView(cv, lps);
         }
 
-        if(fcount <= 2){
+        if(!firstFound){
+            Log.i("new note", "new note");
             //no notes are in the directory, so put a default in
             String fname = "note_0";
+            int cardNum = 0;
             //File file = new File(notesDirectory, fname);
             String defaultText = "new note.";
             FileOutputStream os;
@@ -96,6 +107,18 @@ public class MainActivity extends AppCompatActivity {
             }catch(Exception e){
                 e.printStackTrace();
             }
+
+            CardView cv = new CardView(this);
+            LinearLayout.LayoutParams lps = new LinearLayout.LayoutParams(700, 700);
+            EditText et = new EditText(this);
+            et.setLayoutParams(new ViewGroup.LayoutParams( ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+            notesContent[cardNum] = et;
+            noteCards[cardNum] = cv;
+            numberOfNotes++;
+            et.setText( defaultText, TextView.BufferType.NORMAL);
+            cv.addView(et);
+            linlayout.addView(cv, lps);
+
         }
 
 
@@ -109,6 +132,15 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onReceive(Context context, Intent intent) {
             headsOn = !headsOn;
+        }
+    };
+
+    private BroadcastReceiver notesUpdateReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            int cardNum = intent.getIntExtra("cardNum", -1);
+            String text = getFileContents("note_" + cardNum);
+            notesContent[cardNum].setText( text, TextView.BufferType.NORMAL);
         }
     };
 
@@ -128,8 +160,8 @@ public class MainActivity extends AppCompatActivity {
             headsOn = !headsOn;
             // Use broadcast here instead to signal finished I/O write
         }
-        String newdata = getFileContents("note_0");
-        notesContent[0].setText(newdata, TextView.BufferType.NORMAL);
+        //String newdata = getFileContents("note_0");
+        //notesContent[0].setText(newdata, TextView.BufferType.NORMAL);
     }
 
 
