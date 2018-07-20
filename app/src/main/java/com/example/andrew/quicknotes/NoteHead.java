@@ -8,11 +8,16 @@ import android.content.IntentFilter;
 import android.content.res.Resources;
 import android.graphics.PixelFormat;
 import android.graphics.Rect;
+import android.os.Environment;
 import android.os.IBinder;
+import android.provider.Settings;
 import android.support.constraint.ConstraintLayout;
 import android.support.v4.content.LocalBroadcastManager;
+import android.support.v4.util.CircularArray;
+import android.support.v7.widget.CardView;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.util.Pair;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
@@ -32,9 +37,12 @@ import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.List;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -53,11 +61,13 @@ public class NoteHead extends Service {
     private boolean overlay = false;
     final Service myHeads = this;
     EditText et ;
-    String  originalNote;
+    String noteContents;
+    String currentNote;
     HomeWatcher mHomeWatcher;
-    int currentNote = 0;
-
-
+    int numberOfNotes = 0;
+    ArrayList<String> noteNames = new ArrayList<>();
+    String notesDirectoryName = "myQuickNotes";
+    File notesDirectory;
 
 
     @Override public IBinder onBind(Intent intent) {
@@ -69,6 +79,15 @@ public class NoteHead extends Service {
     @Override public void onCreate() {
         super.onCreate();
 
+        //gather names of the notes
+        notesDirectory = new File(Environment.getExternalStorageDirectory(), notesDirectoryName);
+        File[] notes = notesDirectory.listFiles();
+        for(File f: notes){
+            numberOfNotes++;
+            String name = f.getName();
+            noteNames.add(name);
+        }
+
         windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
         LayoutInflater inflater = (LayoutInflater) getSystemService((LAYOUT_INFLATER_SERVICE));
         layout =  (FrameLayout) inflater.inflate(R.layout.notes_overlay, null);
@@ -76,15 +95,12 @@ public class NoteHead extends Service {
 
 
 
-
-
         chatHead = new ImageView(this);
         chatHead.setImageResource(R.drawable.notes_icon);
 
         FileInputStream is;
-        String firstNote = "note_0";
-        originalNote = "";
-        try{
+        currentNote = noteNames.get(0);
+        /*try{
             int val;
             is = openFileInput(firstNote);
             while((val = is.read()) != -1){
@@ -93,13 +109,13 @@ public class NoteHead extends Service {
             }
         }catch (Exception e){
             e.printStackTrace();
-        }
-
+        }*/
+        noteContents = getFileContents(currentNote);
 
         //EditText et = layout.findViewById(R.id.noteText);
-        Log.i("note", originalNote);
+        Log.i("note", noteContents);
         et = layout.findViewById(R.id.noteText);
-        et.setText( originalNote, TextView.BufferType.EDITABLE);
+        et.setText( noteContents, TextView.BufferType.EDITABLE);
 
 
 
@@ -177,10 +193,10 @@ public class NoteHead extends Service {
                     //animate to left if notes are more towards the left
                     chatHead.setImageResource(R.drawable.notes_icon);
 
-                    if(params.y > 450){
+                    if(params.y > (maxHeight/2) - 60){
                         sendMessage();
-                        writeFile("note_0", String.valueOf(et.getText()));
-                        sendUpdateMessage(currentNote);
+                        writeFile("note_0.txt", String.valueOf(et.getText()));
+                        sendUpdateMessage();
                         myHeads.stopSelf();
 
                     }else{
@@ -301,14 +317,13 @@ public class NoteHead extends Service {
     }
 
 
-
     @Override
     public void onDestroy() {
         mHomeWatcher.stopWatch();
         String lastEdit = String.valueOf(et.getText());
-        if(lastEdit.compareTo(originalNote) != 0){
+        if(lastEdit.compareTo(noteContents) != 0){
             Log.i("writing", "writing new d");
-            writeFile("note_0", lastEdit);
+            writeFile("note_0.txt", lastEdit);
         }
 
         super.onDestroy();
@@ -326,9 +341,9 @@ public class NoteHead extends Service {
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
 
-    private void sendUpdateMessage(int noteNum){
+    private void sendUpdateMessage(){
         Intent intent = new Intent("updateNotes");
-        intent.putExtra("cardNum", noteNum);
+        intent.putExtra("cardName", currentNote);
 
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
@@ -344,17 +359,38 @@ public class NoteHead extends Service {
     }
 
     public void writeFile(String fname, String data){
-        FileOutputStream os;
+        File mypath=new File(notesDirectory,fname);
+        String defaultText = "new note.";
         try{
-            //PrintWriter writer = new PrintWriter(fname);
-            //writer.print("");
-            //writer.close();
+            FileOutputStream os = new FileOutputStream(mypath);
             os = openFileOutput(fname, Context.MODE_PRIVATE);
             os.write(data.getBytes());
             os.close();
         }catch(Exception e){
             e.printStackTrace();
         }
+    }
+
+    private String getCurNote() {
+        return currentNote;
+    }
+
+    public String getFileContents(String noteName){
+        String note = "";
+        File notesPath=new File(notesDirectory,noteName);
+        try{
+            FileInputStream is = new FileInputStream(notesPath);
+            int val;
+            is = openFileInput(noteName);
+            while((val = is.read()) != -1){
+                Log.i("new note val", Character.toString((char)val));
+                note = note.concat(Character.toString((char)val));
+            }
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+
+        return note;
     }
 }
 
