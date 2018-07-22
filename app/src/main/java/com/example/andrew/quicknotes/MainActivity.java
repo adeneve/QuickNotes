@@ -6,6 +6,8 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
@@ -13,11 +15,14 @@ import android.os.SystemClock;
 import android.provider.Settings;
 import android.support.annotation.RequiresApi;
 import android.support.v4.content.LocalBroadcastManager;
+import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.CardView;
 import android.util.Log;
 import android.util.Pair;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
@@ -34,6 +39,11 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import android.content.Intent;
+import android.support.v7.app.AppCompatActivity;
+import android.os.Bundle;
+import android.view.View;
+import android.widget.EditText;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -46,11 +56,18 @@ public class MainActivity extends AppCompatActivity {
     EditText[] notesContent = new EditText[5];
     CardView[] noteCards = new CardView[5];
     List<Pair<String, Integer>> noteIndexPairs = new ArrayList<Pair<String, Integer>>();
+    boolean floatysStarted = false;
+
+    Intent intenty;
+    ActionBar ab;
 
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        ab = getSupportActionBar();
+        ab.setBackgroundDrawable(new ColorDrawable(Color.rgb(192, 239, 167)));
+
         if(Build.VERSION.SDK_INT >= 23){
         boolean candraw = Settings.canDrawOverlays(this);
         Log.i("canDraw", Boolean.toString(candraw));
@@ -61,6 +78,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         final Button button = findViewById(R.id.button);
+        AppCompatActivity thisV = thisView;
         button.setOnClickListener(new View.OnClickListener(){
             //boolean headsOn = false;
             public void onClick(View v){
@@ -82,6 +100,9 @@ public class MainActivity extends AppCompatActivity {
         LocalBroadcastManager.getInstance(this)
                 .registerReceiver(notesUpdateReceiver,
                         new IntentFilter("updateNotes"));
+        LocalBroadcastManager.getInstance(this)
+                .registerReceiver(floatsStartingReceiver,
+                        new IntentFilter("floatysStarting"));
 
         LinearLayout linlayout =  findViewById(R.id.notelist);
 
@@ -161,12 +182,25 @@ public class MainActivity extends AppCompatActivity {
     private BroadcastReceiver notesUpdateReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
+
             String cardName = intent.getStringExtra("cardName");
-            Log.i("RECIEVED-NAME", cardName);
-            String text = getFileContents(cardName);
-            notesContent[getAssociatedInt(cardName)].setText( text, TextView.BufferType.NORMAL);
+            if(cardName != null) {
+                //Log.i("RECIEVED-NAME", cardName);
+                String text = getFileContents(cardName);
+                notesContent[getAssociatedInt(cardName)].setText(text, TextView.BufferType.NORMAL);
+            }
         }
     };
+    private BroadcastReceiver floatsStartingReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            headsOn = !headsOn;
+            startService(new Intent(thisView, NoteHead.class));
+            floatysStarted = true;
+            moveTaskToBack(true);
+        }
+    };
+
 
     @Override
     public void onDestroy() {
@@ -179,13 +213,42 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onResume() {
         super.onResume();
+        ab.setDisplayShowTitleEnabled(true);
         if(headsOn) {
-            stopService(new Intent(thisView, NoteHead.class));
-            headsOn = !headsOn;
+            if(!floatysStarted) {
+                stopService(new Intent(thisView, NoteHead.class));
+                headsOn = !headsOn;
+                floatysStarted = false;
+            }
             // Use broadcast here instead to signal finished I/O write
         }
         //String newdata = getFileContents("note_0");
         //notesContent[0].setText(newdata, TextView.BufferType.NORMAL);
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        // Inflate the menu; this adds items to the action bar if it is present.
+        getMenuInflater().inflate(R.menu.menu_main, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle action bar item clicks here. The action bar will
+        // automatically handle clicks on the Home/Up button, so long
+        // as you specify a parent activity in AndroidManifest.xml.
+        int id = item.getItemId();
+        intenty = new Intent(this, Overlay.class);
+
+        //noinspection SimplifiableIfStatement
+        if (id == R.id.action_settings) {
+            ab.setDisplayShowTitleEnabled(false);
+            startActivity(intenty);
+            return true;
+        }
+
+        return super.onOptionsItemSelected(item);
     }
 
 
