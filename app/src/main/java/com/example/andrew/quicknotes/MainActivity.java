@@ -14,6 +14,7 @@ import android.os.Environment;
 import android.os.SystemClock;
 import android.provider.Settings;
 import android.support.annotation.RequiresApi;
+import android.support.design.widget.FloatingActionButton;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
@@ -21,6 +22,7 @@ import android.os.Bundle;
 import android.support.v7.widget.CardView;
 import android.util.Log;
 import android.util.Pair;
+import android.util.TypedValue;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -57,6 +59,7 @@ public class MainActivity extends AppCompatActivity {
     CardView[] noteCards = new CardView[5];
     List<Pair<String, Integer>> noteIndexPairs = new ArrayList<Pair<String, Integer>>();
     boolean floatysStarted = false;
+    Context ctx = this;
 
     Intent intenty;
     ActionBar ab;
@@ -77,20 +80,40 @@ public class MainActivity extends AppCompatActivity {
         }}
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        final Button button = findViewById(R.id.button);
         AppCompatActivity thisV = thisView;
-        button.setOnClickListener(new View.OnClickListener(){
-            //boolean headsOn = false;
-            public void onClick(View v){
-                if( !headsOn) {
-                    startService(new Intent(thisView, NoteHead.class));
-                    headsOn = !headsOn;
-                    //return;
-                }else{
-                    stopService(new Intent(thisView, NoteHead.class));
-                    headsOn = !headsOn;
-                    //return;
+
+        final LinearLayout linlayout =  findViewById(R.id.notelist);
+
+
+        FloatingActionButton fab = findViewById(R.id.fab);
+        fab.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                String newNoteName = "note_" + Integer.toString(numberOfNotes+1);
+                File mypath=new File(notesDirectory,newNoteName);
+                //File file = new File(notesDirectory, fname);
+                String defaultText = "new note.";
+                try{
+                    FileOutputStream os = new FileOutputStream(mypath);
+                    os = openFileOutput(newNoteName, Context.MODE_PRIVATE);
+                    os.write(defaultText.getBytes());
+                    os.close();
+                }catch(Exception e){
+                    e.printStackTrace();
                 }
+
+                CardView cv = new CardView(ctx);
+                LinearLayout.LayoutParams lps = new LinearLayout.LayoutParams(400, 400);
+                EditText et = new EditText(ctx);
+                et.setLayoutParams(new ViewGroup.LayoutParams( ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+                int slot = findOpenSlot(noteCards);
+                notesContent[slot] = et;
+                noteCards[slot] = cv;
+                noteIndexPairs.add(new Pair<String, Integer>(newNoteName, slot));
+                numberOfNotes++;
+                et.setText( defaultText, TextView.BufferType.NORMAL);
+                cv.addView(et);
+                linlayout.addView(cv, lps);
             }
         });
 
@@ -103,8 +126,6 @@ public class MainActivity extends AppCompatActivity {
         LocalBroadcastManager.getInstance(this)
                 .registerReceiver(floatsStartingReceiver,
                         new IntentFilter("floatysStarting"));
-
-        LinearLayout linlayout =  findViewById(R.id.notelist);
 
         notesDirectory = new File(Environment.getExternalStorageDirectory(), notesDirectoryName);
         if(!notesDirectory.isDirectory()) notesDirectory.mkdirs();
@@ -119,7 +140,10 @@ public class MainActivity extends AppCompatActivity {
             firstFound = true;
             int index = findOpenSlot(noteCards);
             CardView cv = new CardView(this);
-            LinearLayout.LayoutParams lps = new LinearLayout.LayoutParams(700, 700);
+            int dp = 300;
+            float height =  dp * this.getResources().getDisplayMetrics().density;
+            int heightInt = (int) height;
+            LinearLayout.LayoutParams lps = new LinearLayout.LayoutParams(heightInt, heightInt);
             EditText et = new EditText(this);
             et.setLayoutParams(new ViewGroup.LayoutParams( ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
             String noteContents = getFileContents( f.getName());
@@ -196,7 +220,6 @@ public class MainActivity extends AppCompatActivity {
         public void onReceive(Context context, Intent intent) {
             headsOn = !headsOn;
             startService(new Intent(thisView, NoteHead.class));
-            floatysStarted = true;
             moveTaskToBack(true);
         }
     };
@@ -214,16 +237,12 @@ public class MainActivity extends AppCompatActivity {
     public void onResume() {
         super.onResume();
         ab.setDisplayShowTitleEnabled(true);
+        Log.i("headsOn", Boolean.toString(headsOn));
         if(headsOn) {
-            if(!floatysStarted) {
                 stopService(new Intent(thisView, NoteHead.class));
                 headsOn = !headsOn;
-                floatysStarted = false;
-            }
             // Use broadcast here instead to signal finished I/O write
         }
-        //String newdata = getFileContents("note_0");
-        //notesContent[0].setText(newdata, TextView.BufferType.NORMAL);
     }
 
     @Override

@@ -91,6 +91,7 @@ public class NoteHead extends Service {
         windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
         LayoutInflater inflater = (LayoutInflater) getSystemService((LAYOUT_INFLATER_SERVICE));
         layout =  (FrameLayout) inflater.inflate(R.layout.notes_overlay, null);
+        layout.setBackgroundColor(getResources().getColor(R.color.colorAccent));
         layout.setFocusableInTouchMode(true);
 
 

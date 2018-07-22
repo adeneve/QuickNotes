@@ -47,6 +47,7 @@ public class Overlay extends AppCompatActivity {
         tv.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                //for some reason the onResume method of mainActivity gets called first instead of onRecieve
                 sendMessage();
                 finish();
             }
