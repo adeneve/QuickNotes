@@ -35,12 +35,12 @@
             android:id="@+id/noteText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:maxWidth="150dp"
+            android:maxWidth="250dp"
             android:maxHeight="150dp"
             android:layout_gravity="left"
             android:layout_marginTop="50dp"
-            android:layout_marginRight="100dp"
-            android:layout_marginBottom="100dp"
+            android:layout_marginRight="10dp"
+            android:layout_marginBottom="60dp"
             android:padding="18dp"
             android:backgroundTint="@color/cardview_light_background"
             android:text="Hello World!" />
@@ -48,10 +48,12 @@
          <Button
              android:layout_width="30dp"
              android:layout_height="30dp"
+             android:id="@+id/leftNote"
              android:background="@drawable/ic_chevron_left_black_24dp"
              android:layout_gravity="bottom"/>
 
          <TextView
+             android:id="@+id/counter"
              android:layout_width="wrap_content"
              android:layout_height="wrap_content"
              android:layout_gravity="bottom"
@@ -62,6 +64,7 @@
          <Button
              android:layout_width="30dp"
              android:layout_height="30dp"
+             android:id="@+id/rightNote"
              android:background="@drawable/ic_chevron_right_black_24dp"
              android:layout_gravity="bottom"
              android:layout_marginLeft="100dp"/>

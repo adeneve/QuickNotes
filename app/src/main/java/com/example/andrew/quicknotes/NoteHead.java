@@ -10,6 +10,7 @@ import android.graphics.PixelFormat;
 import android.graphics.Rect;
 import android.os.Environment;
 import android.os.IBinder;
+import android.os.SystemClock;
 import android.provider.Settings;
 import android.support.constraint.ConstraintLayout;
 import android.support.v4.content.LocalBroadcastManager;
@@ -66,10 +67,13 @@ public class NoteHead extends Service {
     HomeWatcher mHomeWatcher;
     int numberOfNotes = 0;
     ArrayList<String> noteNames = new ArrayList<>();
-    String[] noteNamesTwo = new String[5];
     String notesDirectoryName = "myQuickNotes";
     int curNoteindex = 0;
     File notesDirectory;
+
+    NoteHead nh = this;
+
+    boolean notOutsideClick = true;
 
 
     @Override public IBinder onBind(Intent intent) {
@@ -85,7 +89,6 @@ public class NoteHead extends Service {
         notesDirectory = new File(Environment.getExternalStorageDirectory(), notesDirectoryName);
         File[] notes = notesDirectory.listFiles();
         for(File f: notes){
-            noteNamesTwo[numberOfNotes] = f.getName();
             numberOfNotes++;
             String name = f.getName();
             noteNames.add(name);
@@ -104,22 +107,42 @@ public class NoteHead extends Service {
 
         FileInputStream is;
         currentNote = noteNames.get(0);
-        /*try{
-            int val;
-            is = openFileInput(firstNote);
-            while((val = is.read()) != -1){
-                Log.i("new note val", Character.toString((char)val));
-                originalNote = originalNote.concat(Character.toString((char)val));
-            }
-        }catch (Exception e){
-            e.printStackTrace();
-        }*/
         noteContents = getFileContents(currentNote);
 
         //EditText et = layout.findViewById(R.id.noteText);
         Log.i("note", noteContents);
         et = layout.findViewById(R.id.noteText);
         et.setText( noteContents, TextView.BufferType.EDITABLE);
+
+        final TextView tv = layout.findViewById(R.id.counter);
+        updateNoteIndicator(curNoteindex+1, numberOfNotes, tv);
+
+        Button goLeft = layout.findViewById(R.id.leftNote);
+        Button goRight = layout.findViewById(R.id.rightNote);
+
+        goLeft.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if((curNoteindex+1) > 1){
+                    curNoteindex--;
+                    currentNote  = noteNames.get(curNoteindex);
+                    updateText(et, noteNames.get(curNoteindex));
+                    updateNoteIndicator(curNoteindex+1, numberOfNotes, tv);
+                }
+            }
+        });
+
+        goRight.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if((curNoteindex+1) < numberOfNotes){
+                    curNoteindex++;
+                    currentNote = noteNames.get(curNoteindex);
+                    updateText(et, noteNames.get(curNoteindex));
+                    updateNoteIndicator(curNoteindex+1, numberOfNotes, tv);
+                }
+            }
+        });
 
 
 
@@ -206,13 +229,14 @@ public class NoteHead extends Service {
 
                     }else{
                         if(wasClicked(roldx, roldy, params.x, params.y)) {
-                            if (!overlay) {
+                            if (!overlay && notOutsideClick) {
                                 windowManager.addView(layout, OverlayParams);
 
                                 overlay = true;
                             } else {
-                                windowManager.removeView(layout);
-                                overlay = false;
+                                //windowManager.removeView(layout);
+                                //overlay = false;
+                                //notOutsideClick = true;
                             }
                         }
                     }
@@ -228,6 +252,7 @@ public class NoteHead extends Service {
                                       float mdx=0, mdy=0;
                                       @Override
                                       public boolean onTouch(View view, MotionEvent motionEvent) {
+
 
                                           int action = motionEvent.getAction();
                                           et2.clearFocus();
@@ -250,9 +275,18 @@ public class NoteHead extends Service {
 
                                       }
                                       if(action == MotionEvent.ACTION_OUTSIDE){
+                                              notOutsideClick = false;
+                                              Thread t1 = new Thread(new Runnable() {
+                                                 public void run() {
+                                                  SystemClock.sleep(500);
+                                                  notOutsideClick = true;
+                                                }
+                                              });
+                                              t1.start();
                                               imm.hideSoftInputFromWindow(et2.getWindowToken(), 0);
                                               windowManager.removeView(layout);
                                               overlay = !overlay;
+
 
 
                                       }
@@ -378,10 +412,6 @@ public class NoteHead extends Service {
         }
     }
 
-    private String getCurNote() {
-        return currentNote;
-    }
-
     public boolean wasClicked(int oldx, int oldy, int newx, int newy){
         float pixelDensity = this.getResources().getDisplayMetrics().density;
         float oldxDP = oldx/pixelDensity;
@@ -418,6 +448,18 @@ public class NoteHead extends Service {
 
         return note;
     }
+
+    public void updateNoteIndicator(int curIndex, int totalNotes, TextView tv){
+        String noteIndicator = Integer.toString(curNoteindex+1) + "/" + Integer.toString(numberOfNotes);
+        tv.setText(noteIndicator);
+    }
+
+    public void updateText(EditText et, String noteName){
+        String noteContents = getFileContents(noteName);
+        et.setText( noteContents, TextView.BufferType.EDITABLE);
+    }
+
+
 }
 
 
