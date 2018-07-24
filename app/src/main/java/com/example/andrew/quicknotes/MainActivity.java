@@ -27,10 +27,12 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -64,7 +66,6 @@ public class MainActivity extends AppCompatActivity {
     Intent intenty;
     ActionBar ab;
 
-
     @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -82,38 +83,19 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         AppCompatActivity thisV = thisView;
 
-        final LinearLayout linlayout =  findViewById(R.id.notelist);
-
 
         FloatingActionButton fab = findViewById(R.id.fab);
+        final ScrollView sv = findViewById(R.id.scroller);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                String newNoteName = "note_" + Integer.toString(numberOfNotes+1);
-                File mypath=new File(notesDirectory,newNoteName);
-                //File file = new File(notesDirectory, fname);
-                String defaultText = "new note.";
-                try{
-                    FileOutputStream os = new FileOutputStream(mypath);
-                    os = openFileOutput(newNoteName, Context.MODE_PRIVATE);
-                    os.write(defaultText.getBytes());
-                    os.close();
-                }catch(Exception e){
-                    e.printStackTrace();
+                String newNoteName = "note_" + Integer.toString(numberOfNotes) + ".txt";
+                boolean created = createNewNote(newNoteName);
+                if(!created){
+                    Toast.makeText(c, "max number of notes reached", Toast.LENGTH_SHORT).show();
+                }else{
+                    sv.scrollTo(0, sv.getBottom());
                 }
-
-                CardView cv = new CardView(ctx);
-                LinearLayout.LayoutParams lps = new LinearLayout.LayoutParams(400, 400);
-                EditText et = new EditText(ctx);
-                et.setLayoutParams(new ViewGroup.LayoutParams( ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-                int slot = findOpenSlot(noteCards);
-                notesContent[slot] = et;
-                noteCards[slot] = cv;
-                noteIndexPairs.add(new Pair<String, Integer>(newNoteName, slot));
-                numberOfNotes++;
-                et.setText( defaultText, TextView.BufferType.NORMAL);
-                cv.addView(et);
-                linlayout.addView(cv, lps);
             }
         });
 
@@ -132,6 +114,10 @@ public class MainActivity extends AppCompatActivity {
         File[] notes = notesDirectory.listFiles();
         int fcount = 0;
         boolean firstFound = false;
+        final LinearLayout linlayout =  findViewById(R.id.notelist);
+        linlayout.removeAllViewsInLayout();
+        noteCards = new CardView[5];
+        notesContent = new EditText[5];
 
         for(File f: notes){
             fcount++;
@@ -153,40 +139,15 @@ public class MainActivity extends AppCompatActivity {
             noteIndexPairs.add(Pair.create(name, index));
             numberOfNotes++;
             Log.i("noteContents", noteContents);
+            et.setFocusable(false);
             et.setText( noteContents, TextView.BufferType.NORMAL);
             cv.addView(et);
             linlayout.addView(cv, lps);
         }
 
         if(!firstFound){
-            Log.i("new note", "new note");
-            //no notes are in the directory, so put a default in
-            String fname = "note_0.txt";
-            int cardNum = 0;
-            File mypath=new File(notesDirectory,fname);
-            //File file = new File(notesDirectory, fname);
-            String defaultText = "new note.";
-            try{
-                FileOutputStream os = new FileOutputStream(mypath);
-                os = openFileOutput(fname, Context.MODE_PRIVATE);
-                os.write(defaultText.getBytes());
-                os.close();
-            }catch(Exception e){
-                e.printStackTrace();
-            }
-
-            CardView cv = new CardView(this);
-            LinearLayout.LayoutParams lps = new LinearLayout.LayoutParams(400, 400);
-            EditText et = new EditText(this);
-            et.setLayoutParams(new ViewGroup.LayoutParams( ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-            notesContent[cardNum] = et;
-            noteCards[cardNum] = cv;
-            noteIndexPairs.add(new Pair<String, Integer>(fname, cardNum));
-            numberOfNotes++;
-            et.setText( defaultText, TextView.BufferType.NORMAL);
-            cv.addView(et);
-            linlayout.addView(cv, lps);
-
+            String newNoteName = "note_" + Integer.toString(numberOfNotes) + ".txt";
+            createNewNote(newNoteName);
         }
 
 
@@ -314,6 +275,44 @@ public class MainActivity extends AppCompatActivity {
 
         }
         return index;
+    }
+
+    public boolean createNewNote(String noteName){
+        final LinearLayout linlayout =  findViewById(R.id.notelist);
+        File mypath=new File(notesDirectory,noteName);
+        //File file = new File(notesDirectory, fname);
+        String defaultText = "new note.";
+
+        CardView cv = new CardView(ctx);
+        int dp = 300;
+        float height =  dp * this.getResources().getDisplayMetrics().density;
+        int heightInt = (int) height;
+        LinearLayout.LayoutParams lps = new LinearLayout.LayoutParams(heightInt, heightInt);
+        EditText et = new EditText(ctx);
+        et.setLayoutParams(new ViewGroup.LayoutParams( ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        int slot = findOpenSlot(noteCards);
+        if(slot == -1){
+            return false;
+        }
+
+        try{
+            FileOutputStream os = new FileOutputStream(mypath);
+            os = openFileOutput(noteName, Context.MODE_PRIVATE);
+            os.write(defaultText.getBytes());
+            os.close();
+        }catch(Exception e){
+            e.printStackTrace();
+        }
+        notesContent[slot] = et;
+        noteCards[slot] = cv;
+        noteIndexPairs.add(new Pair<String, Integer>(noteName, slot));
+        numberOfNotes++;
+        et.setText( defaultText, TextView.BufferType.NORMAL);
+        et.setFocusable(false);
+        cv.addView(et);
+        linlayout.addView(cv, lps);
+        return  true;
+
     }
 
 }

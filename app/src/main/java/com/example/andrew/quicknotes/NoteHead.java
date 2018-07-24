@@ -66,7 +66,9 @@ public class NoteHead extends Service {
     HomeWatcher mHomeWatcher;
     int numberOfNotes = 0;
     ArrayList<String> noteNames = new ArrayList<>();
+    String[] noteNamesTwo = new String[5];
     String notesDirectoryName = "myQuickNotes";
+    int curNoteindex = 0;
     File notesDirectory;
 
 
@@ -83,6 +85,7 @@ public class NoteHead extends Service {
         notesDirectory = new File(Environment.getExternalStorageDirectory(), notesDirectoryName);
         File[] notes = notesDirectory.listFiles();
         for(File f: notes){
+            noteNamesTwo[numberOfNotes] = f.getName();
             numberOfNotes++;
             String name = f.getName();
             noteNames.add(name);
@@ -142,6 +145,7 @@ public class NoteHead extends Service {
                 WindowManager.LayoutParams.TYPE_PHONE,
                 WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL | WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
                 PixelFormat.TRANSLUCENT);
+        //OverlayParams.gravity = Gravity.LEFT;
 
         final int maxWidth = getScreenWidth();
         final int maxHeight = getScreenHeight();
@@ -196,12 +200,12 @@ public class NoteHead extends Service {
 
                     if(params.y > (maxHeight/2) - 60){
                         sendMessage();
-                        writeFile("note_0.txt", String.valueOf(et.getText()));
+                        writeFile(currentNote, String.valueOf(et.getText()));
                         sendUpdateMessage();
                         myHeads.stopSelf();
 
                     }else{
-                        if(roldx== params.x && roldy == params.y) {
+                        if(wasClicked(roldx, roldy, params.x, params.y)) {
                             if (!overlay) {
                                 windowManager.addView(layout, OverlayParams);
 
@@ -292,6 +296,8 @@ public class NoteHead extends Service {
         });
 
 
+
+
                 windowManager.addView(chatHead, params);
 
                 mHomeWatcher = new HomeWatcher(this);
@@ -324,7 +330,7 @@ public class NoteHead extends Service {
         String lastEdit = String.valueOf(et.getText());
         if(lastEdit.compareTo(noteContents) != 0){
             Log.i("writing", "writing new d");
-            writeFile("note_0.txt", lastEdit);
+            writeFile(currentNote, lastEdit);
         }
 
         super.onDestroy();
@@ -374,6 +380,25 @@ public class NoteHead extends Service {
 
     private String getCurNote() {
         return currentNote;
+    }
+
+    public boolean wasClicked(int oldx, int oldy, int newx, int newy){
+        float pixelDensity = this.getResources().getDisplayMetrics().density;
+        float oldxDP = oldx/pixelDensity;
+        float oldyDP = oldy/pixelDensity;
+        float newxDP = newx/pixelDensity;
+        float newyDP = newy/pixelDensity;
+        int clickRange = 10;
+        float topRangex =  (oldxDP + clickRange);
+        float bottomRangex =  (oldxDP - clickRange);
+        float topRangey = (oldyDP + clickRange);
+        float bottomRangey = (oldyDP - clickRange);
+
+        if( ((newxDP > bottomRangex && newxDP < topRangex) && (newyDP > bottomRangey && newyDP < topRangey)) ){
+            return true;
+        }
+
+        return false;
     }
 
     public String getFileContents(String noteName){
