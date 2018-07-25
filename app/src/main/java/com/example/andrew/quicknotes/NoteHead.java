@@ -1,12 +1,16 @@
 package com.example.andrew.quicknotes;
 import android.annotation.SuppressLint;
+import android.app.AlertDialog;
 import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.res.Resources;
+import android.graphics.Color;
 import android.graphics.PixelFormat;
+import android.graphics.PorterDuff;
 import android.graphics.Rect;
 import android.os.Environment;
 import android.os.IBinder;
@@ -59,6 +63,7 @@ public class NoteHead extends Service {
     private WindowManager windowManager;
     private ImageView chatHead;
     private FrameLayout layout;
+    private FrameLayout deleteLayout;
     private boolean overlay = false;
     final Service myHeads = this;
     EditText et ;
@@ -70,6 +75,10 @@ public class NoteHead extends Service {
     String notesDirectoryName = "myQuickNotes";
     int curNoteindex = 0;
     File notesDirectory;
+    boolean wishToDelete = false;
+    boolean notDonePicking = false;
+
+    float phonePxDensity;
 
     NoteHead nh = this;
 
@@ -84,6 +93,9 @@ public class NoteHead extends Service {
 
     @Override public void onCreate() {
         super.onCreate();
+
+        phonePxDensity = this.getResources().getDisplayMetrics().density;
+
 
         //gather names of the notes
         notesDirectory = new File(Environment.getExternalStorageDirectory(), notesDirectoryName);
@@ -100,10 +112,11 @@ public class NoteHead extends Service {
         layout.setBackgroundColor(getResources().getColor(R.color.colorAccent));
         layout.setFocusableInTouchMode(true);
 
-
+        deleteLayout =  (FrameLayout) inflater.inflate(R.layout.delete, null);
+        deleteLayout.setFocusableInTouchMode(true);
 
         chatHead = new ImageView(this);
-        chatHead.setImageResource(R.drawable.notes_icon);
+        chatHead.setImageResource(R.drawable.ic_library_books_black_24dp);
 
         FileInputStream is;
         currentNote = noteNames.get(0);
@@ -114,16 +127,23 @@ public class NoteHead extends Service {
         et = layout.findViewById(R.id.noteText);
         et.setText( noteContents, TextView.BufferType.EDITABLE);
 
+
         final TextView tv = layout.findViewById(R.id.counter);
         updateNoteIndicator(curNoteindex+1, numberOfNotes, tv);
 
         Button goLeft = layout.findViewById(R.id.leftNote);
         Button goRight = layout.findViewById(R.id.rightNote);
+        Button delete = layout.findViewById(R.id.deleteBut);
 
         goLeft.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 if((curNoteindex+1) > 1){
+                    String curContents = String.valueOf(et.getText());
+                    if(noteContents.compareTo(curContents) != 0){
+                        writeFile(currentNote, curContents);
+                        sendUpdateMessage();
+                    }
                     curNoteindex--;
                     currentNote  = noteNames.get(curNoteindex);
                     updateText(et, noteNames.get(curNoteindex));
@@ -136,6 +156,11 @@ public class NoteHead extends Service {
             @Override
             public void onClick(View view) {
                 if((curNoteindex+1) < numberOfNotes){
+                    String curContents = String.valueOf(et.getText());
+                    if(noteContents.compareTo(curContents) != 0){
+                        writeFile(currentNote, curContents);
+                        sendUpdateMessage();
+                    }
                     curNoteindex++;
                     currentNote = noteNames.get(curNoteindex);
                     updateText(et, noteNames.get(curNoteindex));
@@ -157,8 +182,8 @@ public class NoteHead extends Service {
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
                 PixelFormat.TRANSLUCENT);
 
-       // params.gravity = Gravity.TOP | Gravity.LEFT;
-        params.x = -10;
+
+        //params.x = -10;
         params.y = 0;
 
         // TRY MAKING THIS ITS OWN ACTIVITY then use moveTaskToBack
@@ -170,8 +195,62 @@ public class NoteHead extends Service {
                 PixelFormat.TRANSLUCENT);
         //OverlayParams.gravity = Gravity.LEFT;
 
+        final WindowManager.LayoutParams deleteParams = new WindowManager.LayoutParams(
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.TYPE_PHONE,
+                WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
+                PixelFormat.TRANSLUCENT);
+
+
+        delete.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                windowManager.addView(deleteLayout, deleteParams);
+            }
+        });
+
+        Button yd = deleteLayout.findViewById(R.id.yesDelete);
+        Button nd = deleteLayout.findViewById(R.id.noDelete);
+
+        yd.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (curNoteindex > 0) {
+                    noteNames.remove(curNoteindex);
+                    curNoteindex--;
+                    numberOfNotes--;
+                    updateText(et, noteNames.get(curNoteindex));
+                    updateNoteIndicator(curNoteindex + 1, numberOfNotes, tv);
+                    sendDeleteMessage(currentNote);
+                    currentNote = noteNames.get(curNoteindex);
+                } else {
+                    if (curNoteindex == 0 && numberOfNotes == 1) {
+                        sendDeleteMessage(currentNote);
+                        stopSelf();
+                    } else {
+                        noteNames.remove(curNoteindex);
+                        numberOfNotes--;
+                        updateText(et, noteNames.get(curNoteindex));
+                        updateNoteIndicator(curNoteindex + 1, numberOfNotes, tv);
+                        sendDeleteMessage(currentNote);
+                        currentNote = noteNames.get(curNoteindex);
+                    }
+                }
+                windowManager.removeView(deleteLayout);
+            }
+        });
+        nd.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                windowManager.removeView(deleteLayout);
+            }
+        });
+
+
         final int maxWidth = getScreenWidth();
         final int maxHeight = getScreenHeight();
+        params.x = -(maxWidth/2) + 10;
         Log.i("maxWidth", Integer.toString(maxWidth));
         Log.i("maxHeight", Integer.toString(maxHeight));
 
@@ -194,15 +273,18 @@ public class NoteHead extends Service {
                     roldx = params.x; roldy = params.y;
                     oldx = params.x; oldy = params.y;
 
-                    chatHead.setImageResource(R.drawable.notes_icon_pressed);
+                    chatHead.setImageResource(R.drawable.ic_library_books_black2_24dp);
 
                 } else
                 if(action == MotionEvent.ACTION_MOVE) {
                         int sumx = (int) (motionEvent.getRawX() + mdx);
                         int sumy = (int) (motionEvent.getRawY() + mdy);
 
-                        if(Math.abs(sumx) > (maxWidth/2) - 40) sumx = oldx;
-                        if(Math.abs(sumy) > (maxHeight/2) - 40) sumy = oldy;
+                        Log.i("sumx", Integer.toString(sumx));
+                        Log.i("max width", Integer.toString(maxWidth));
+
+                        if(Math.abs(sumx) > (maxWidth/2) - (10*phonePxDensity)) sumx = oldx;
+                        if(Math.abs(sumy) > (maxHeight/2) - (10*phonePxDensity)) sumy = oldy;
                         //params.x = (int) (motionEvent.getRawX() + mdx);
                         //params.y = (int) (motionEvent.getRawY() + mdy);
                         params.x = sumx;
@@ -219,9 +301,9 @@ public class NoteHead extends Service {
                 } else
                 if(action == MotionEvent.ACTION_UP){
                     //animate to left if notes are more towards the left
-                    chatHead.setImageResource(R.drawable.notes_icon);
+                    chatHead.setImageResource(R.drawable.ic_library_books_black_24dp);
 
-                    if(params.y > (maxHeight/2) - 60){
+                    if(params.y > (maxHeight/2) - 100){
                         sendMessage();
                         writeFile(currentNote, String.valueOf(et.getText()));
                         sendUpdateMessage();
@@ -324,6 +406,11 @@ public class NoteHead extends Service {
         button4.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                String curContents = String.valueOf(et.getText());
+                if(noteContents.compareTo(curContents) != 0){
+                    writeFile(currentNote, curContents);
+                    sendUpdateMessage();
+                }
                 windowManager.removeView(layout);
                 overlay = false;
             }
@@ -365,6 +452,7 @@ public class NoteHead extends Service {
         if(lastEdit.compareTo(noteContents) != 0){
             Log.i("writing", "writing new d");
             writeFile(currentNote, lastEdit);
+            sendUpdateMessage();
         }
 
         super.onDestroy();
@@ -384,6 +472,13 @@ public class NoteHead extends Service {
 
     private void sendUpdateMessage(){
         Intent intent = new Intent("updateNotes");
+        intent.putExtra("cardName", currentNote);
+
+        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+    }
+
+    private void sendDeleteMessage(String noteName){
+        Intent intent = new Intent("deleteNote");
         intent.putExtra("cardName", currentNote);
 
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
@@ -458,6 +553,7 @@ public class NoteHead extends Service {
         String noteContents = getFileContents(noteName);
         et.setText( noteContents, TextView.BufferType.EDITABLE);
     }
+
 
 
 }

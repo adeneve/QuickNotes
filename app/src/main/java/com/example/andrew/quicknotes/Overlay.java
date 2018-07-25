@@ -62,6 +62,8 @@ public class Overlay extends AppCompatActivity {
         getMenuInflater().inflate(R.menu.menu_main, menu);
         menu.findItem(R.id.backButton).setIcon(R.drawable.ic_chevron_left_black_24dp);
         menu.findItem(R.id.backButton).setVisible(true);
+        menu.findItem(R.id.listView).setVisible(false);
+        menu.findItem(R.id.cardView).setVisible(false);
         return true;
     }
 

@@ -2,8 +2,10 @@ package com.example.andrew.quicknotes;
 
 
 import android.annotation.TargetApi;
+import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Color;
@@ -60,11 +62,14 @@ public class MainActivity extends AppCompatActivity {
     EditText[] notesContent = new EditText[5];
     CardView[] noteCards = new CardView[5];
     List<Pair<String, Integer>> noteIndexPairs = new ArrayList<Pair<String, Integer>>();
+    List<Pair<Pair<String, CardView>, EditText>> listOfCards = new ArrayList<>();
     boolean floatysStarted = false;
     Context ctx = this;
 
     Intent intenty;
     ActionBar ab;
+
+    AlertDialog.Builder builder;
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
@@ -82,6 +87,25 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         AppCompatActivity thisV = thisView;
+
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            builder = new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert);
+        } else {
+            builder = new AlertDialog.Builder(this);
+        }
+        builder.setTitle("Delete note")
+                .setMessage("Are you sure you want to delete this note?")
+                .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        // continue with delete
+                    }
+                })
+                .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        // do nothing
+                    }
+                });
 
 
         FloatingActionButton fab = findViewById(R.id.fab);
@@ -108,6 +132,9 @@ public class MainActivity extends AppCompatActivity {
         LocalBroadcastManager.getInstance(this)
                 .registerReceiver(floatsStartingReceiver,
                         new IntentFilter("floatysStarting"));
+        LocalBroadcastManager.getInstance(this)
+                .registerReceiver(deleteReceiver,
+                        new IntentFilter("deleteNote"));
 
         notesDirectory = new File(Environment.getExternalStorageDirectory(), notesDirectoryName);
         if(!notesDirectory.isDirectory()) notesDirectory.mkdirs();
@@ -182,6 +209,14 @@ public class MainActivity extends AppCompatActivity {
             headsOn = !headsOn;
             startService(new Intent(thisView, NoteHead.class));
             moveTaskToBack(true);
+        }
+    };
+
+    private BroadcastReceiver deleteReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String cardName = intent.getStringExtra("cardName");
+            deleteNote(cardName);
         }
     };
 
@@ -280,7 +315,6 @@ public class MainActivity extends AppCompatActivity {
     public boolean createNewNote(String noteName){
         final LinearLayout linlayout =  findViewById(R.id.notelist);
         File mypath=new File(notesDirectory,noteName);
-        //File file = new File(notesDirectory, fname);
         String defaultText = "new note.";
 
         CardView cv = new CardView(ctx);
@@ -313,6 +347,20 @@ public class MainActivity extends AppCompatActivity {
         linlayout.addView(cv, lps);
         return  true;
 
+    }
+
+    public boolean deleteNote(String noteName){
+        final LinearLayout linlayout =  findViewById(R.id.notelist);
+        File noteToBeDeleted = new File(notesDirectory, noteName);
+        int cardIndex = getAssociatedInt(noteName);
+        boolean successfulDelete;
+        successfulDelete = noteToBeDeleted.delete();
+        EditText et = notesContent[cardIndex];
+        CardView cv = noteCards[cardIndex];
+        linlayout.removeView(cv);
+        notesContent[cardIndex] = null;
+        noteCards[cardIndex] = null;
+        return successfulDelete;
     }
 
 }

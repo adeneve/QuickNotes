@@ -15,4 +15,20 @@
           android:orderInCategory="1"
           app:showAsAction="always"/>
 
+    <item android:visible="true"
+          android:id="@+id/listView"
+          android:title="@string/action_settings"
+          android:orderInCategory="2"
+          android:icon="@drawable/ic_format_list_bulleted_black_24dp"
+          app:showAsAction="always"
+        />
+
+    <item android:visible="true"
+        android:id="@+id/cardView"
+        android:title="@string/action_settings"
+        android:orderInCategory="2"
+        android:icon="@drawable/ic_view_module_black_24dp"
+        app:showAsAction="always"
+        />
+
 </menu>
