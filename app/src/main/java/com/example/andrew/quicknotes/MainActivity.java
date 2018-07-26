@@ -25,6 +25,7 @@ import android.support.v7.widget.CardView;
 import android.util.Log;
 import android.util.Pair;
 import android.util.TypedValue;
+import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -45,6 +46,8 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.PriorityQueue;
+
 import android.content.Intent;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -58,18 +61,21 @@ public class MainActivity extends AppCompatActivity {
     File notesDirectory;
     String notesDirectoryName = "myQuickNotes";
     int numberOfNotes = 0;
-    Context c = this;
     EditText[] notesContent = new EditText[5];
     CardView[] noteCards = new CardView[5];
     List<Pair<String, Integer>> noteIndexPairs = new ArrayList<Pair<String, Integer>>();
     List<Pair<Pair<String, CardView>, EditText>> listOfCards = new ArrayList<>();
+    PriorityQueue<Long> lastModifiedDates = new PriorityQueue<Long>();
     boolean floatysStarted = false;
     Context ctx = this;
 
     Intent intenty;
     ActionBar ab;
 
-    AlertDialog.Builder builder;
+    boolean candraw = true;
+
+    AlertDialog.Builder deleteBuilder;
+    AlertDialog.Builder fileNameBuilder;
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
@@ -78,23 +84,36 @@ public class MainActivity extends AppCompatActivity {
         ab.setBackgroundDrawable(new ColorDrawable(Color.rgb(192, 239, 167)));
 
         if(Build.VERSION.SDK_INT >= 23){
-        boolean candraw = Settings.canDrawOverlays(this);
+        candraw = Settings.canDrawOverlays(this);
         Log.i("canDraw", Boolean.toString(candraw));
         if(!candraw){
-            Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
-            startActivity(intent);
+            //Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
+            //startActivity(intent);
         }}
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         AppCompatActivity thisV = thisView;
 
 
+
+        final EditText fileNameInput = new EditText(MainActivity.this);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.MATCH_PARENT);
+        fileNameInput.setLayoutParams(lp);
+        fileNameInput.setTextColor(Color.rgb(255,255,255));
+
+
+
+        // Alert Dialog for deleting a note
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            builder = new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert);
+            deleteBuilder = new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert);
+            fileNameBuilder = new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert);
         } else {
-            builder = new AlertDialog.Builder(this);
+            deleteBuilder = new AlertDialog.Builder(this);
+            fileNameBuilder = new AlertDialog.Builder(this);
         }
-        builder.setTitle("Delete note")
+        deleteBuilder.setTitle("Delete note")
                 .setMessage("Are you sure you want to delete this note?")
                 .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int which) {
@@ -106,20 +125,35 @@ public class MainActivity extends AppCompatActivity {
                         // do nothing
                     }
                 });
-
-
-        FloatingActionButton fab = findViewById(R.id.fab);
         final ScrollView sv = findViewById(R.id.scroller);
+        fileNameBuilder.setView(fileNameInput);
+        fileNameBuilder.setTitle("Note name")
+                .setPositiveButton("Create", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        String newNoteName = fileNameInput.getText().toString();
+                        String created = createNewNote(newNoteName);
+                        if(created.compareTo("success") != 0){
+                            Toast.makeText(ctx, created, Toast.LENGTH_SHORT).show();
+                        }else{
+                            Toast.makeText(ctx, "new note created", Toast.LENGTH_SHORT).show();
+                            sv.scrollTo(0, sv.getTop());
+                        }
+                        dialog.cancel();
+                    }
+                })
+                .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.cancel();
+                    }
+                });
+
+
+        final AlertDialog newFileDialog = fileNameBuilder.create();
+        FloatingActionButton fab = findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                String newNoteName = "note_" + Integer.toString(numberOfNotes) + ".txt";
-                boolean created = createNewNote(newNoteName);
-                if(!created){
-                    Toast.makeText(c, "max number of notes reached", Toast.LENGTH_SHORT).show();
-                }else{
-                    sv.scrollTo(0, sv.getBottom());
-                }
+                newFileDialog.show();
             }
         });
 
@@ -151,10 +185,12 @@ public class MainActivity extends AppCompatActivity {
             String name = f.getName();
             Log.i("fname", name);
             firstFound = true;
+            lastModifiedDates.add(f.lastModified());
             int index = findOpenSlot(noteCards);
             CardView cv = new CardView(this);
             int dp = 300;
             float height =  dp * this.getResources().getDisplayMetrics().density;
+            // code for setting up a card can be placed into a separate function
             int heightInt = (int) height;
             LinearLayout.LayoutParams lps = new LinearLayout.LayoutParams(heightInt, heightInt);
             EditText et = new EditText(this);
@@ -169,6 +205,8 @@ public class MainActivity extends AppCompatActivity {
             et.setFocusable(false);
             et.setText( noteContents, TextView.BufferType.NORMAL);
             cv.addView(et);
+            cv.setPadding(2,4,2,4);
+            lps.setMargins(2,4,2,4);
             linlayout.addView(cv, lps);
         }
 
@@ -199,6 +237,7 @@ public class MainActivity extends AppCompatActivity {
             if(cardName != null) {
                 //Log.i("RECIEVED-NAME", cardName);
                 String text = getFileContents(cardName);
+                Log.i("cardName", cardName);
                 notesContent[getAssociatedInt(cardName)].setText(text, TextView.BufferType.NORMAL);
             }
         }
@@ -206,9 +245,13 @@ public class MainActivity extends AppCompatActivity {
     private BroadcastReceiver floatsStartingReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            headsOn = !headsOn;
-            startService(new Intent(thisView, NoteHead.class));
-            moveTaskToBack(true);
+            if(candraw) {
+                headsOn = !headsOn;
+                startService(new Intent(thisView, NoteHead.class));
+                moveTaskToBack(true);
+            }else{
+                Toast.makeText(ctx, "overlay permission not granted, to turn on this permission go to Settings>Apps>Permissions", Toast.LENGTH_SHORT).show();
+            }
         }
     };
 
@@ -312,8 +355,31 @@ public class MainActivity extends AppCompatActivity {
         return index;
     }
 
-    public boolean createNewNote(String noteName){
+    public void removeFromList(String cardName){
+        Iterator noteIterator = noteIndexPairs.iterator();
+        int index = -1;
+        Pair<String, Integer> theindex = null;
+        while(noteIterator.hasNext()){
+            Pair<String, Integer> noteIndex = (Pair<String, Integer>) noteIterator.next();
+            Log.i("cname", noteIndex.first);
+            Log.i("cname2", cardName);
+            if(noteIndex.first.compareTo(cardName) == 0){
+                theindex = noteIndex;
+            }
+        }
+        noteIndexPairs.remove(theindex);
+    }
+
+    public String createNewNote(String noteName){
         final LinearLayout linlayout =  findViewById(R.id.notelist);
+        boolean sameName = false;
+        File[] notes = notesDirectory.listFiles();
+        for(File f : notes){
+            if(f.getName().compareTo(noteName) == 0){
+                sameName = true;
+            }
+        }
+        if(sameName) return "a note with this name already exists";
         File mypath=new File(notesDirectory,noteName);
         String defaultText = "new note.";
 
@@ -324,9 +390,16 @@ public class MainActivity extends AppCompatActivity {
         LinearLayout.LayoutParams lps = new LinearLayout.LayoutParams(heightInt, heightInt);
         EditText et = new EditText(ctx);
         et.setLayoutParams(new ViewGroup.LayoutParams( ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        TextView nameWatermark = new TextView(ctx);
+        //nameWatermark.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        nameWatermark.setGravity(Gravity.TOP | Gravity.RIGHT);
+        nameWatermark.setText(noteName);
+        nameWatermark.setPadding(2,2,2,2);
+        nameWatermark.setTextSize(25);
+
         int slot = findOpenSlot(noteCards);
         if(slot == -1){
-            return false;
+            return "max number of notes reached";
         }
 
         try{
@@ -344,8 +417,10 @@ public class MainActivity extends AppCompatActivity {
         et.setText( defaultText, TextView.BufferType.NORMAL);
         et.setFocusable(false);
         cv.addView(et);
-        linlayout.addView(cv, lps);
-        return  true;
+        cv.addView(nameWatermark);
+        cv.setPadding(2,2,2,2);
+        linlayout.addView(cv, 0, lps);
+        return  "success";
 
     }
 
@@ -360,8 +435,10 @@ public class MainActivity extends AppCompatActivity {
         linlayout.removeView(cv);
         notesContent[cardIndex] = null;
         noteCards[cardIndex] = null;
+        removeFromList(noteName);
         return successfulDelete;
     }
+
 
 }
 

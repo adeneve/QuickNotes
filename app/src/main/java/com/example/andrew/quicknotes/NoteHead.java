@@ -315,10 +315,6 @@ public class NoteHead extends Service {
                                 windowManager.addView(layout, OverlayParams);
 
                                 overlay = true;
-                            } else {
-                                //windowManager.removeView(layout);
-                                //overlay = false;
-                                //notOutsideClick = true;
                             }
                         }
                     }
@@ -348,8 +344,12 @@ public class NoteHead extends Service {
                                           if(action == MotionEvent.ACTION_MOVE) {
                                               Log.i("x position", Integer.toString(OverlayParams.x));
                                               Log.i("y position", Integer.toString(OverlayParams.y));
-                                              OverlayParams.x = (int) (motionEvent.getRawX() + mdx);
-                                              OverlayParams.y = (int) (motionEvent.getRawY() + mdy);
+                                              if(Math.abs(OverlayParams.x) < (maxWidth/2) + 10*phonePxDensity) {
+                                                  OverlayParams.x = (int) (motionEvent.getRawX() + mdx);
+                                              }
+                                              if(Math.abs(OverlayParams.y) < (maxHeight/2)+ 10*phonePxDensity) {
+                                                  OverlayParams.y = (int) (motionEvent.getRawY() + mdy);
+                                              }
 
                                               windowManager.updateViewLayout(layout, OverlayParams);
                                           return true;
@@ -368,9 +368,6 @@ public class NoteHead extends Service {
                                               imm.hideSoftInputFromWindow(et2.getWindowToken(), 0);
                                               windowManager.removeView(layout);
                                               overlay = !overlay;
-
-
-
                                       }
                                       return true;
                                   }});
