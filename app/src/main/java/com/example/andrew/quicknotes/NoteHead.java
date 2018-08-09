@@ -100,10 +100,18 @@ public class NoteHead extends Service {
         //gather names of the notes
         notesDirectory = new File(Environment.getExternalStorageDirectory(), notesDirectoryName);
         File[] notes = notesDirectory.listFiles();
+
+        boolean firstFound = false;
         for(File f: notes){
+            firstFound = true;
             numberOfNotes++;
             String name = f.getName();
             noteNames.add(name);
+        }
+
+        if(!firstFound){
+            String newNoteName = "note_" + Integer.toString(numberOfNotes) + ".txt";
+            //createNewNote(newNoteName)
         }
 
         windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
@@ -129,6 +137,9 @@ public class NoteHead extends Service {
 
 
         final TextView tv = layout.findViewById(R.id.counter);
+        final TextView nameWatermark = layout.findViewById(R.id.noteWaterM);
+        final Button sharebut = layout.findViewById(R.id.shareBut);
+        nameWatermark.setText(currentNote);
         updateNoteIndicator(curNoteindex+1, numberOfNotes, tv);
 
         Button goLeft = layout.findViewById(R.id.leftNote);
@@ -146,7 +157,7 @@ public class NoteHead extends Service {
                     }
                     curNoteindex--;
                     currentNote  = noteNames.get(curNoteindex);
-                    updateText(et, noteNames.get(curNoteindex));
+                    updateText(et, nameWatermark, noteNames.get(curNoteindex));
                     updateNoteIndicator(curNoteindex+1, numberOfNotes, tv);
                 }
             }
@@ -163,7 +174,7 @@ public class NoteHead extends Service {
                     }
                     curNoteindex++;
                     currentNote = noteNames.get(curNoteindex);
-                    updateText(et, noteNames.get(curNoteindex));
+                    updateText(et, nameWatermark, noteNames.get(curNoteindex));
                     updateNoteIndicator(curNoteindex+1, numberOfNotes, tv);
                 }
             }
@@ -220,18 +231,19 @@ public class NoteHead extends Service {
                     noteNames.remove(curNoteindex);
                     curNoteindex--;
                     numberOfNotes--;
-                    updateText(et, noteNames.get(curNoteindex));
+                    updateText(et, nameWatermark, noteNames.get(curNoteindex));
                     updateNoteIndicator(curNoteindex + 1, numberOfNotes, tv);
                     sendDeleteMessage(currentNote);
                     currentNote = noteNames.get(curNoteindex);
                 } else {
                     if (curNoteindex == 0 && numberOfNotes == 1) {
                         sendDeleteMessage(currentNote);
+                        sendMessage();
                         stopSelf();
                     } else {
                         noteNames.remove(curNoteindex);
                         numberOfNotes--;
-                        updateText(et, noteNames.get(curNoteindex));
+                        updateText(et, nameWatermark, noteNames.get(curNoteindex));
                         updateNoteIndicator(curNoteindex + 1, numberOfNotes, tv);
                         sendDeleteMessage(currentNote);
                         currentNote = noteNames.get(curNoteindex);
@@ -244,6 +256,20 @@ public class NoteHead extends Service {
             @Override
             public void onClick(View view) {
                 windowManager.removeView(deleteLayout);
+            }
+        });
+
+        sharebut.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent sharingIntent = new Intent(android.content.Intent.ACTION_SEND);
+                sharingIntent.setType("text/plain");
+                String shareBody = et.getText().toString();
+                sharingIntent.putExtra(android.content.Intent.EXTRA_SUBJECT, currentNote);
+                sharingIntent.putExtra(android.content.Intent.EXTRA_TEXT, shareBody);
+                Intent chooser = Intent.createChooser(sharingIntent, "Share note using");
+                chooser.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(chooser);
             }
         });
 
@@ -328,6 +354,7 @@ public class NoteHead extends Service {
         final EditText et2 = layout.findViewById(R.id.noteText);
         layout.setOnTouchListener(new View.OnTouchListener() {
                                       float mdx=0, mdy=0;
+                                      int oldx = 0, oldy = 0;
                                       @Override
                                       public boolean onTouch(View view, MotionEvent motionEvent) {
 
@@ -339,17 +366,22 @@ public class NoteHead extends Service {
                                           if(action == MotionEvent.ACTION_DOWN){
                                               mdx = OverlayParams.x - motionEvent.getRawX();
                                               mdy = OverlayParams.y - motionEvent.getRawY();
+                                              oldx = OverlayParams.x; oldy = OverlayParams.y;
+
 
                                           } else
                                           if(action == MotionEvent.ACTION_MOVE) {
                                               Log.i("x position", Integer.toString(OverlayParams.x));
                                               Log.i("y position", Integer.toString(OverlayParams.y));
-                                              if(Math.abs(OverlayParams.x) < (maxWidth/2) + 10*phonePxDensity) {
-                                                  OverlayParams.x = (int) (motionEvent.getRawX() + mdx);
-                                              }
-                                              if(Math.abs(OverlayParams.y) < (maxHeight/2)+ 10*phonePxDensity) {
-                                                  OverlayParams.y = (int) (motionEvent.getRawY() + mdy);
-                                              }
+                                              int sumx = (int) (motionEvent.getRawX() + mdx);
+                                              int sumy = (int) (motionEvent.getRawY() + mdy);
+
+                                              if(Math.abs(sumx) > (maxWidth/2) - (10*phonePxDensity)) sumx = oldx;
+                                              if(Math.abs(sumy) > (maxHeight/2) - (10*phonePxDensity)) sumy = oldy;
+
+                                              OverlayParams.x = sumx; OverlayParams.y = sumy;
+
+                                              oldx = OverlayParams.x; oldy = OverlayParams.y;
 
                                               windowManager.updateViewLayout(layout, OverlayParams);
                                           return true;
@@ -445,12 +477,6 @@ public class NoteHead extends Service {
     @Override
     public void onDestroy() {
         mHomeWatcher.stopWatch();
-        String lastEdit = String.valueOf(et.getText());
-        if(lastEdit.compareTo(noteContents) != 0){
-            Log.i("writing", "writing new d");
-            writeFile(currentNote, lastEdit);
-            sendUpdateMessage();
-        }
 
         super.onDestroy();
         if(overlay) {
@@ -467,6 +493,7 @@ public class NoteHead extends Service {
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
 
+    // Do the actual file io frome the service in case main dies/fails which it has
     private void sendUpdateMessage(){
         Intent intent = new Intent("updateNotes");
         intent.putExtra("cardName", currentNote);
@@ -477,6 +504,10 @@ public class NoteHead extends Service {
     private void sendDeleteMessage(String noteName){
         Intent intent = new Intent("deleteNote");
         intent.putExtra("cardName", currentNote);
+
+        File noteToBeDeleted = new File(notesDirectory, noteName);
+        boolean successfulDelete;
+        successfulDelete = noteToBeDeleted.delete();
 
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
@@ -546,9 +577,10 @@ public class NoteHead extends Service {
         tv.setText(noteIndicator);
     }
 
-    public void updateText(EditText et, String noteName){
+    public void updateText(EditText et, TextView name, String noteName){
         String noteContents = getFileContents(noteName);
         et.setText( noteContents, TextView.BufferType.EDITABLE);
+        name.setText(noteName);
     }
 
 

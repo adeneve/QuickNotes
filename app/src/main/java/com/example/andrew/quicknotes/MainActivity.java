@@ -251,6 +251,8 @@ public class MainActivity extends AppCompatActivity {
                 moveTaskToBack(true);
             }else{
                 Toast.makeText(ctx, "overlay permission not granted, to turn on this permission go to Settings>Apps>Permissions", Toast.LENGTH_SHORT).show();
+                Intent intento = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
+                startActivity(intento);
             }
         }
     };
@@ -310,7 +312,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-    public String getFileContents(String noteName){
+    public  String getFileContents(String noteName){
         String note = "";
         File notesPath=new File(notesDirectory,noteName);
         try{
@@ -327,6 +329,7 @@ public class MainActivity extends AppCompatActivity {
 
         return note;
     }
+
 
     public int findOpenSlot(CardView[] cv){
         int slot = -1;
@@ -418,6 +421,7 @@ public class MainActivity extends AppCompatActivity {
         et.setFocusable(false);
         cv.addView(et);
         cv.addView(nameWatermark);
+        addEditTransition(cv);
         cv.setPadding(2,2,2,2);
         linlayout.addView(cv, 0, lps);
         return  "success";
@@ -428,8 +432,8 @@ public class MainActivity extends AppCompatActivity {
         final LinearLayout linlayout =  findViewById(R.id.notelist);
         File noteToBeDeleted = new File(notesDirectory, noteName);
         int cardIndex = getAssociatedInt(noteName);
-        boolean successfulDelete;
-        successfulDelete = noteToBeDeleted.delete();
+        boolean successfulDelete = true;
+        //successfulDelete = noteToBeDeleted.delete();
         EditText et = notesContent[cardIndex];
         CardView cv = noteCards[cardIndex];
         linlayout.removeView(cv);
@@ -437,6 +441,17 @@ public class MainActivity extends AppCompatActivity {
         noteCards[cardIndex] = null;
         removeFromList(noteName);
         return successfulDelete;
+    }
+
+    // function for setting a click listener on the card view to transition to an edit activity
+    public void addEditTransition(CardView cv){
+        cv.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Toast.makeText(ctx, "transitioning", Toast.LENGTH_SHORT).show();
+            }
+        });
+
     }
 
 
