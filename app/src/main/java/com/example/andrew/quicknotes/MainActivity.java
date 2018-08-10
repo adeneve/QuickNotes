@@ -1,7 +1,5 @@
 package com.example.andrew.quicknotes;
 
-
-import android.annotation.TargetApi;
 import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -10,10 +8,8 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
-import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
-import android.os.SystemClock;
 import android.provider.Settings;
 import android.support.annotation.RequiresApi;
 import android.support.design.widget.FloatingActionButton;
@@ -24,16 +20,12 @@ import android.os.Bundle;
 import android.support.v7.widget.CardView;
 import android.util.Log;
 import android.util.Pair;
-import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.inputmethod.InputMethodManager;
-import android.widget.Button;
 import android.widget.EditText;
-import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -42,17 +34,12 @@ import android.widget.Toast;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+
+//data structures
 import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.PriorityQueue;
-
-import android.content.Intent;
-import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
-import android.view.View;
-import android.widget.EditText;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -66,11 +53,12 @@ public class MainActivity extends AppCompatActivity {
     List<Pair<String, Integer>> noteIndexPairs = new ArrayList<Pair<String, Integer>>();
     List<Pair<Pair<String, CardView>, EditText>> listOfCards = new ArrayList<>();
     PriorityQueue<Long> lastModifiedDates = new PriorityQueue<Long>();
-    boolean floatysStarted = false;
     Context ctx = this;
 
     Intent intenty;
     ActionBar ab;
+
+    float phonePxDensity;
 
     boolean candraw = true;
 
@@ -83,13 +71,12 @@ public class MainActivity extends AppCompatActivity {
         ab = getSupportActionBar();
         ab.setBackgroundDrawable(new ColorDrawable(Color.rgb(192, 239, 167)));
 
+        phonePxDensity = this.getResources().getDisplayMetrics().density;
+
         if(Build.VERSION.SDK_INT >= 23){
         candraw = Settings.canDrawOverlays(this);
         Log.i("canDraw", Boolean.toString(candraw));
-        if(!candraw){
-            //Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
-            //startActivity(intent);
-        }}
+        }
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         AppCompatActivity thisV = thisView;
@@ -182,14 +169,14 @@ public class MainActivity extends AppCompatActivity {
 
         for(File f: notes){
             fcount++;
-            String name = f.getName();
-            Log.i("fname", name);
+            String noteName = f.getName();
+            Log.i("fname", noteName);
             firstFound = true;
             lastModifiedDates.add(f.lastModified());
             int index = findOpenSlot(noteCards);
             CardView cv = new CardView(this);
             int dp = 300;
-            float height =  dp * this.getResources().getDisplayMetrics().density;
+            float height =  dp * phonePxDensity;
             // code for setting up a card can be placed into a separate function
             int heightInt = (int) height;
             LinearLayout.LayoutParams lps = new LinearLayout.LayoutParams(heightInt, heightInt);
@@ -199,20 +186,23 @@ public class MainActivity extends AppCompatActivity {
             Log.i("noteName", f.getName());
             notesContent[index] = et;
             noteCards[index] = cv;
-            noteIndexPairs.add(Pair.create(name, index));
+            noteIndexPairs.add(Pair.create(noteName, index));
             numberOfNotes++;
             Log.i("noteContents", noteContents);
+
+            TextView nameWatermark = new TextView(ctx);
+            nameWatermark.setGravity(Gravity.BOTTOM| Gravity.RIGHT);
+            nameWatermark.setText(noteName);
+            nameWatermark.setPadding(2,2,2,2);
+            nameWatermark.setTextSize(20);
             et.setFocusable(false);
             et.setText( noteContents, TextView.BufferType.NORMAL);
             cv.addView(et);
+            cv.addView(nameWatermark);
             cv.setPadding(2,4,2,4);
+            addEditTransition(cv);
             lps.setMargins(2,4,2,4);
             linlayout.addView(cv, lps);
-        }
-
-        if(!firstFound){
-            String newNoteName = "note_" + Integer.toString(numberOfNotes) + ".txt";
-            createNewNote(newNoteName);
         }
 
 
@@ -276,6 +266,11 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public void onResume() {
+        if(numberOfNotes == 0) {
+            findViewById(R.id.noNotes).setVisibility(View.VISIBLE);
+        }else{
+            findViewById(R.id.noNotes).setVisibility(View.INVISIBLE);
+        }
         super.onResume();
         ab.setDisplayShowTitleEnabled(true);
         Log.i("headsOn", Boolean.toString(headsOn));
@@ -388,17 +383,17 @@ public class MainActivity extends AppCompatActivity {
 
         CardView cv = new CardView(ctx);
         int dp = 300;
-        float height =  dp * this.getResources().getDisplayMetrics().density;
+        float height =  dp * phonePxDensity;
         int heightInt = (int) height;
         LinearLayout.LayoutParams lps = new LinearLayout.LayoutParams(heightInt, heightInt);
         EditText et = new EditText(ctx);
         et.setLayoutParams(new ViewGroup.LayoutParams( ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         TextView nameWatermark = new TextView(ctx);
         //nameWatermark.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        nameWatermark.setGravity(Gravity.TOP | Gravity.RIGHT);
+        nameWatermark.setGravity(Gravity.BOTTOM| Gravity.RIGHT);
         nameWatermark.setText(noteName);
         nameWatermark.setPadding(2,2,2,2);
-        nameWatermark.setTextSize(25);
+        nameWatermark.setTextSize(20);
 
         int slot = findOpenSlot(noteCards);
         if(slot == -1){
@@ -422,6 +417,7 @@ public class MainActivity extends AppCompatActivity {
         cv.addView(et);
         cv.addView(nameWatermark);
         addEditTransition(cv);
+        findViewById(R.id.noNotes).setVisibility(View.INVISIBLE);
         cv.setPadding(2,2,2,2);
         linlayout.addView(cv, 0, lps);
         return  "success";
@@ -430,10 +426,9 @@ public class MainActivity extends AppCompatActivity {
 
     public boolean deleteNote(String noteName){
         final LinearLayout linlayout =  findViewById(R.id.notelist);
-        File noteToBeDeleted = new File(notesDirectory, noteName);
         int cardIndex = getAssociatedInt(noteName);
+        numberOfNotes--;
         boolean successfulDelete = true;
-        //successfulDelete = noteToBeDeleted.delete();
         EditText et = notesContent[cardIndex];
         CardView cv = noteCards[cardIndex];
         linlayout.removeView(cv);
@@ -448,6 +443,7 @@ public class MainActivity extends AppCompatActivity {
         cv.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                //start edit activity
                 Toast.makeText(ctx, "transitioning", Toast.LENGTH_SHORT).show();
             }
         });

@@ -33,14 +33,24 @@ public class Overlay extends AppCompatActivity {
         ab.setDisplayShowTitleEnabled(false);
         setContentView(R.layout.settings);
 
-        TextView tv = findViewById(R.id.toggleFloatys);
+        final TextView tv = findViewById(R.id.toggleFloatys);
+        final TextView themes = findViewById(R.id.themes);
+
         tv.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View view, MotionEvent motionEvent) {
-                //sendMessage();
-                //finish();
+
+                int action = motionEvent.getAction();
+
+                if(action == MotionEvent.ACTION_DOWN){
+                    tv.setBackgroundColor(getResources().getColor(R.color.colorAccent));
+                }
+                if(action == MotionEvent.ACTION_UP){
+                    tv.setBackgroundColor(255);
+                }
                 return false;
             }
+
 
         });
 
@@ -51,6 +61,24 @@ public class Overlay extends AppCompatActivity {
                 sendMessage();
                 finish();
             }
+        });
+
+        themes.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View view, MotionEvent motionEvent) {
+
+                int action = motionEvent.getAction();
+
+                if(action == MotionEvent.ACTION_DOWN){
+                    themes.setBackgroundColor(getResources().getColor(R.color.colorAccent));
+                }
+                if(action == MotionEvent.ACTION_UP){
+                    themes.setBackgroundColor(255);
+                }
+                return true;
+            }
+
+
         });
 
 

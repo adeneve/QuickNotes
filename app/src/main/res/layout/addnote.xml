@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:background="@color/cardview_dark_background"
+    android:layout_gravity="center"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <TextView
+        android:layout_width="250dp"
+        android:layout_height="120dp"
+        android:textColorHighlight="@color/cardview_light_background"
+        android:textColor="@color/colorAccent"
+        android:paddingLeft="40dp"
+        android:gravity="top"
+        android:textSize="20dp"
+        android:paddingBottom="20dp"
+        android:text="New Note Name"/>
+
+    <EditText
+        android:layout_width="150dp"
+        android:layout_height="wrap_content"
+        android:textColorHighlight="@color/colorAccent"
+        android:backgroundTint="@color/colorAccent"
+        android:layout_gravity="center"
+        android:layout_margin="10dp"
+        android:gravity="center"/>
+
+    <Button
+        android:layout_width="80dp"
+        android:layout_height="40dp"
+        android:id="@+id/noDelete"
+        android:text="Cancel"
+        android:layout_gravity="bottom"/>
+    <Button
+        android:layout_width="80dp"
+        android:layout_height="40dp"
+        android:id="@+id/yesDelete"
+        android:text="Create"
+        android:layout_gravity="bottom|right"/>
+
+</FrameLayout>

@@ -64,6 +64,7 @@ public class NoteHead extends Service {
     private ImageView chatHead;
     private FrameLayout layout;
     private FrameLayout deleteLayout;
+    private FrameLayout newNoteLayout;
     private boolean overlay = false;
     final Service myHeads = this;
     EditText et ;
@@ -75,8 +76,6 @@ public class NoteHead extends Service {
     String notesDirectoryName = "myQuickNotes";
     int curNoteindex = 0;
     File notesDirectory;
-    boolean wishToDelete = false;
-    boolean notDonePicking = false;
 
     float phonePxDensity;
 
@@ -110,8 +109,12 @@ public class NoteHead extends Service {
         }
 
         if(!firstFound){
-            String newNoteName = "note_" + Integer.toString(numberOfNotes) + ".txt";
-            //createNewNote(newNoteName)
+            String newNoteName = "note_" + Integer.toString(numberOfNotes);
+            writeFile(newNoteName, "new note.");
+            noteNames.add(newNoteName);
+            numberOfNotes++;
+            currentNote = noteNames.get(0);
+            //send new note message
         }
 
         windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
@@ -122,6 +125,9 @@ public class NoteHead extends Service {
 
         deleteLayout =  (FrameLayout) inflater.inflate(R.layout.delete, null);
         deleteLayout.setFocusableInTouchMode(true);
+
+        newNoteLayout = (FrameLayout) inflater.inflate(R.layout.addnote, null);
+        newNoteLayout.setFocusableInTouchMode(true);
 
         chatHead = new ImageView(this);
         chatHead.setImageResource(R.drawable.ic_library_books_black_24dp);
@@ -139,12 +145,14 @@ public class NoteHead extends Service {
         final TextView tv = layout.findViewById(R.id.counter);
         final TextView nameWatermark = layout.findViewById(R.id.noteWaterM);
         final Button sharebut = layout.findViewById(R.id.shareBut);
+        final Button newNoteBut = layout.findViewById(R.id.newNoteBut);
         nameWatermark.setText(currentNote);
         updateNoteIndicator(curNoteindex+1, numberOfNotes, tv);
 
         Button goLeft = layout.findViewById(R.id.leftNote);
         Button goRight = layout.findViewById(R.id.rightNote);
         Button delete = layout.findViewById(R.id.deleteBut);
+        Button add = layout.findViewById(R.id.newNoteBut);
 
         goLeft.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -221,8 +229,17 @@ public class NoteHead extends Service {
             }
         });
 
+        newNoteBut.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                windowManager.addView(newNoteLayout, deleteParams);
+            }
+        });
+
         Button yd = deleteLayout.findViewById(R.id.yesDelete);
         Button nd = deleteLayout.findViewById(R.id.noDelete);
+
+        Button na = newNoteLayout.findViewById(R.id.noDelete);
 
         yd.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -259,6 +276,13 @@ public class NoteHead extends Service {
             }
         });
 
+        na.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                windowManager.removeView(newNoteLayout);
+            }
+        });
+
         sharebut.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -287,6 +311,8 @@ public class NoteHead extends Service {
             int oldx = 0, oldy = 0;
             int roldx = 0, roldy = 0;
 
+            int differenceX = 0, differenceY = 0;
+
 
 
             @Override
@@ -298,6 +324,7 @@ public class NoteHead extends Service {
                     mdy = params.y - motionEvent.getRawY();
                     roldx = params.x; roldy = params.y;
                     oldx = params.x; oldy = params.y;
+                    differenceX = 0; differenceY = 0;
 
                     chatHead.setImageResource(R.drawable.ic_library_books_black2_24dp);
 
@@ -315,6 +342,9 @@ public class NoteHead extends Service {
                         //params.y = (int) (motionEvent.getRawY() + mdy);
                         params.x = sumx;
                         params.y = sumy;
+
+                        differenceX += Math.abs(oldx - params.x) / phonePxDensity;
+                        differenceY += Math.abs(oldy - params.y) / phonePxDensity;
 
                         Log.i("width", Integer.toString(params.x));
                         Log.i("height", Integer.toString(params.y));
@@ -336,7 +366,7 @@ public class NoteHead extends Service {
                         myHeads.stopSelf();
 
                     }else{
-                        if(wasClicked(roldx, roldy, params.x, params.y)) {
+                        if(wasClicked(roldx, roldy, params.x, params.y, differenceX, differenceY)) {
                             if (!overlay && notOutsideClick) {
                                 windowManager.addView(layout, OverlayParams);
 
@@ -412,6 +442,20 @@ public class NoteHead extends Service {
                     Log.i("back", "BACK");
                     windowManager.removeView(layout);
                     overlay = !overlay;
+                }
+
+                return true;
+            }
+        });
+
+        deleteLayout.setOnKeyListener(new View.OnKeyListener() {
+            @Override
+            public boolean onKey(View view, int i, KeyEvent keyEvent) {
+                Log.i("key pressed", Integer.toString(i));
+                if(i == KeyEvent.KEYCODE_BACK || i == KeyEvent.KEYCODE_HOME){
+                    Log.i("back", "BACK");
+                    windowManager.removeView(deleteLayout);
+                    //overlay = !overlay;
                 }
 
                 return true;
@@ -535,7 +579,7 @@ public class NoteHead extends Service {
         }
     }
 
-    public boolean wasClicked(int oldx, int oldy, int newx, int newy){
+    public boolean wasClicked(int oldx, int oldy, int newx, int newy, int difx, int dify){
         float pixelDensity = this.getResources().getDisplayMetrics().density;
         float oldxDP = oldx/pixelDensity;
         float oldyDP = oldy/pixelDensity;
@@ -546,6 +590,10 @@ public class NoteHead extends Service {
         float bottomRangex =  (oldxDP - clickRange);
         float topRangey = (oldyDP + clickRange);
         float bottomRangey = (oldyDP - clickRange);
+
+        if(difx > 30 || dify > 30){
+            return false;
+        }
 
         if( ((newxDP > bottomRangex && newxDP < topRangex) && (newyDP > bottomRangey && newyDP < topRangey)) ){
             return true;
