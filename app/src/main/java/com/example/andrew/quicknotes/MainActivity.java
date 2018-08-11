@@ -36,7 +36,9 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 
 //data structures
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.PriorityQueue;
@@ -53,9 +55,10 @@ public class MainActivity extends AppCompatActivity {
     List<Pair<String, Integer>> noteIndexPairs = new ArrayList<Pair<String, Integer>>();
     List<Pair<Pair<String, CardView>, EditText>> listOfCards = new ArrayList<>();
     PriorityQueue<Long> lastModifiedDates = new PriorityQueue<Long>();
+    List<Pair<String,Long>> noteDatePairs = new ArrayList<>();
     Context ctx = this;
 
-    Intent intenty;
+    Intent SettingsActivity;
     ActionBar ab;
 
     float phonePxDensity;
@@ -156,24 +159,30 @@ public class MainActivity extends AppCompatActivity {
         LocalBroadcastManager.getInstance(this)
                 .registerReceiver(deleteReceiver,
                         new IntentFilter("deleteNote"));
+        LocalBroadcastManager.getInstance(this)
+                .registerReceiver(newNoteReceiver,
+                        new IntentFilter("addNote"));
+
 
         notesDirectory = new File(Environment.getExternalStorageDirectory(), notesDirectoryName);
         if(!notesDirectory.isDirectory()) notesDirectory.mkdirs();
         File[] notes = notesDirectory.listFiles();
-        int fcount = 0;
-        boolean firstFound = false;
         final LinearLayout linlayout =  findViewById(R.id.notelist);
         linlayout.removeAllViewsInLayout();
         noteCards = new CardView[5];
         notesContent = new EditText[5];
+        lastModifiedDates.clear();
+        noteDatePairs.clear();
+        noteIndexPairs.clear();
 
         for(File f: notes){
-            fcount++;
             String noteName = f.getName();
             Log.i("fname", noteName);
-            firstFound = true;
-            lastModifiedDates.add(f.lastModified());
+            long lastModified = f.lastModified();
+            lastModifiedDates.add(lastModified);
+            noteDatePairs.add(Pair.create(noteName, lastModified));
             int index = findOpenSlot(noteCards);
+
             CardView cv = new CardView(this);
             int dp = 300;
             float height =  dp * phonePxDensity;
@@ -186,11 +195,12 @@ public class MainActivity extends AppCompatActivity {
             Log.i("noteName", f.getName());
             notesContent[index] = et;
             noteCards[index] = cv;
+
             noteIndexPairs.add(Pair.create(noteName, index));
             numberOfNotes++;
-            Log.i("noteContents", noteContents);
 
-            TextView nameWatermark = new TextView(ctx);
+
+            /*TextView nameWatermark = new TextView(ctx);
             nameWatermark.setGravity(Gravity.BOTTOM| Gravity.RIGHT);
             nameWatermark.setText(noteName);
             nameWatermark.setPadding(2,2,2,2);
@@ -202,7 +212,57 @@ public class MainActivity extends AppCompatActivity {
             cv.setPadding(2,4,2,4);
             addEditTransition(cv);
             lps.setMargins(2,4,2,4);
-            linlayout.addView(cv, lps);
+            linlayout.addView(cv, lps);*/
+        }
+
+        for(int i = 0; i < numberOfNotes; i++){
+
+            long date;
+            if(lastModifiedDates.size() > 1) {
+                date = lastModifiedDates.remove();
+            }else{
+                date = lastModifiedDates.peek();
+            }
+            Log.i("DATE", Long.toString(date));
+            String noteName = getAssociatedNote(date);
+            int index = getAssociatedInt(noteName);
+            CardView cv = new CardView(this);
+            int dp = 300;
+            float height =  dp * phonePxDensity;
+            // code for setting up a card can be placed into a separate function
+            int heightInt = (int) height;
+            LinearLayout.LayoutParams lps = new LinearLayout.LayoutParams(heightInt, heightInt);
+            EditText et = new EditText(this);
+            et.setLayoutParams(new ViewGroup.LayoutParams( ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+            String noteContents = getFileContents( noteName);
+            Log.i("noteName", noteName);
+            notesContent[index] = et;
+            noteCards[index] = cv;
+            Log.i("noteContents", noteContents);
+
+            TextView nameWatermark = new TextView(ctx);
+            nameWatermark.setGravity(Gravity.BOTTOM| Gravity.RIGHT);
+            nameWatermark.setText(noteName);
+            nameWatermark.setPadding(2,2,2,2);
+            nameWatermark.setTextSize(20);
+
+            TextView dateWatermark = new TextView(ctx);
+            dateWatermark.setGravity(Gravity.BOTTOM | Gravity.LEFT);
+            dateWatermark.setText(getDateFormat(date));
+            dateWatermark.setPadding(2,2,2,2);
+            dateWatermark.setTextSize(15);
+
+            et.setFocusable(false);
+            et.setText( noteContents, TextView.BufferType.NORMAL);
+            cv.addView(et);
+            cv.addView(nameWatermark);
+            cv.addView(dateWatermark);
+            cv.setPadding(2,4,2,4);
+            addEditTransition(cv);
+            lps.setMargins(2,4,2,4);
+            linlayout.addView(cv, 0, lps);
+
+
         }
 
 
@@ -225,7 +285,7 @@ public class MainActivity extends AppCompatActivity {
 
             String cardName = intent.getStringExtra("cardName");
             if(cardName != null) {
-                //Log.i("RECIEVED-NAME", cardName);
+                Log.i("RECIEVED-NAME", cardName);
                 String text = getFileContents(cardName);
                 Log.i("cardName", cardName);
                 notesContent[getAssociatedInt(cardName)].setText(text, TextView.BufferType.NORMAL);
@@ -252,6 +312,44 @@ public class MainActivity extends AppCompatActivity {
         public void onReceive(Context context, Intent intent) {
             String cardName = intent.getStringExtra("cardName");
             deleteNote(cardName);
+        }
+    };
+
+    private BroadcastReceiver newNoteReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String noteName = intent.getStringExtra("cardName");
+            String noteContents = getFileContents(noteName);
+            LinearLayout linlayout = findViewById(R.id.notelist);
+            int index = findOpenSlot(noteCards);
+            CardView cv = new CardView(ctx);
+            int dp = 300;
+            float height =  dp * phonePxDensity;
+            // code for setting up a card can be placed into a separate function
+            int heightInt = (int) height;
+            LinearLayout.LayoutParams lps = new LinearLayout.LayoutParams(heightInt, heightInt);
+            EditText et = new EditText(ctx);
+            et.setLayoutParams(new ViewGroup.LayoutParams( ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+            notesContent[index] = et;
+            noteCards[index] = cv;
+            noteIndexPairs.add(Pair.create(noteName, index));
+            numberOfNotes++;
+            Log.i("noteContents", noteContents);
+
+            TextView nameWatermark = new TextView(ctx);
+            nameWatermark.setGravity(Gravity.BOTTOM| Gravity.RIGHT);
+            nameWatermark.setText(noteName);
+            nameWatermark.setPadding(2,2,2,2);
+            nameWatermark.setTextSize(20);
+            et.setFocusable(false);
+            et.setText( noteContents, TextView.BufferType.NORMAL);
+            cv.addView(et);
+            cv.addView(nameWatermark);
+            cv.setPadding(2,4,2,4);
+            addEditTransition(cv);
+            lps.setMargins(2,4,2,4);
+            linlayout.addView(cv, 0,  lps);
+
         }
     };
 
@@ -294,12 +392,12 @@ public class MainActivity extends AppCompatActivity {
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
-        intenty = new Intent(this, Overlay.class);
+        SettingsActivity = new Intent(this, Overlay.class);
 
         //noinspection SimplifiableIfStatement
         if (id == R.id.action_settings) {
             ab.setDisplayShowTitleEnabled(false);
-            startActivity(intenty);
+            startActivity(SettingsActivity);
             return true;
         }
 
@@ -351,6 +449,29 @@ public class MainActivity extends AppCompatActivity {
 
         }
         return index;
+    }
+
+    public String getAssociatedNote(long date){
+        Iterator noteDateIterator = noteDatePairs.iterator();
+        String noteName = "";
+        while(noteDateIterator.hasNext()){
+            Pair<String, Long> notePair = (Pair<String, Long>) noteDateIterator.next();
+            if(notePair.second == date){
+                noteName = notePair.first;
+                break;
+            }
+        }
+        if(noteName.compareTo("") == 0){
+            Log.i("ERROR", "COULDNT FIND NOTE FROM DATE");
+        }
+        return noteName;
+    }
+
+    public String getDateFormat(long date){
+        Date thedate=new Date(date);
+        SimpleDateFormat df2 = new SimpleDateFormat("MM/dd/yyyy HH:mm aa");
+        String dateText = df2.format(thedate);
+        return dateText;
     }
 
     public void removeFromList(String cardName){

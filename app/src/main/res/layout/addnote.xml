@@ -18,6 +18,7 @@
         android:text="New Note Name"/>
 
     <EditText
+        android:id="@+id/newNoteName"
         android:layout_width="150dp"
         android:layout_height="wrap_content"
         android:textColorHighlight="@color/colorAccent"
@@ -29,13 +30,13 @@
     <Button
         android:layout_width="80dp"
         android:layout_height="40dp"
-        android:id="@+id/noDelete"
+        android:id="@+id/noAdd"
         android:text="Cancel"
         android:layout_gravity="bottom"/>
     <Button
         android:layout_width="80dp"
         android:layout_height="40dp"
-        android:id="@+id/yesDelete"
+        android:id="@+id/yesAdd"
         android:text="Create"
         android:layout_gravity="bottom|right"/>
 

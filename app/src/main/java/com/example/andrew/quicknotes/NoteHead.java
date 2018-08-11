@@ -54,6 +54,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.util.Log;
+import android.widget.Toast;
 
 /**
  * Created by andrew on 2/22/2018.
@@ -72,6 +73,7 @@ public class NoteHead extends Service {
     String currentNote;
     HomeWatcher mHomeWatcher;
     int numberOfNotes = 0;
+    int MAX_NOTES = 5;
     ArrayList<String> noteNames = new ArrayList<>();
     String notesDirectoryName = "myQuickNotes";
     int curNoteindex = 0;
@@ -114,7 +116,8 @@ public class NoteHead extends Service {
             noteNames.add(newNoteName);
             numberOfNotes++;
             currentNote = noteNames.get(0);
-            //send new note message
+            //send new note message to mainActivity or else crash happens
+            sendNewNoteMessage(newNoteName);
         }
 
         windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
@@ -239,7 +242,9 @@ public class NoteHead extends Service {
         Button yd = deleteLayout.findViewById(R.id.yesDelete);
         Button nd = deleteLayout.findViewById(R.id.noDelete);
 
-        Button na = newNoteLayout.findViewById(R.id.noDelete);
+        Button ya = newNoteLayout.findViewById(R.id.yesAdd);
+        Button na = newNoteLayout.findViewById(R.id.noAdd);
+        final EditText newNameEt = newNoteLayout.findViewById(R.id.newNoteName);
 
         yd.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -273,6 +278,22 @@ public class NoteHead extends Service {
             @Override
             public void onClick(View view) {
                 windowManager.removeView(deleteLayout);
+            }
+        });
+
+        ya.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                    curNoteindex = numberOfNotes;
+                    numberOfNotes++;
+                    String fname = newNameEt.getText().toString();
+                    currentNote = fname;
+                    writeFile(fname, "new note.");
+                    noteNames.add(fname);
+                    updateText(et, nameWatermark, noteNames.get(curNoteindex));
+                    updateNoteIndicator(curNoteindex + 1, numberOfNotes, tv);
+                    sendNewNoteMessage(fname);
+                    windowManager.removeView(newNoteLayout);
             }
         });
 
@@ -552,6 +573,13 @@ public class NoteHead extends Service {
         File noteToBeDeleted = new File(notesDirectory, noteName);
         boolean successfulDelete;
         successfulDelete = noteToBeDeleted.delete();
+
+        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+    }
+
+    private void sendNewNoteMessage(String noteName){
+        Intent intent = new Intent("addNote");
+        intent.putExtra("cardName", noteName);
 
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
