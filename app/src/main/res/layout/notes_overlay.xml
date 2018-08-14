@@ -80,8 +80,8 @@
 
          <TextView
              android:id="@+id/noteWaterM"
-             android:layout_width="wrap_content"
-             android:layout_height="wrap_content"
+             android:layout_width="60dp"
+             android:layout_height="20dp"
              android:layout_gravity="bottom"
              android:textColor="@color/colorPrimary"
              android:text="hello"/>
